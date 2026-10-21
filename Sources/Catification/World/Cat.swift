@@ -369,7 +369,7 @@ final class Cat {
         squishFace = max(0, squishFace - dt)
         heartCooldown -= dt
         greetCooldown -= dt
-        strokeAmount *= CGFloat(exp(-dt * 1.2))
+        strokeAmount *= CGFloat(exp(-dt * 0.8))
 
         if let e = emote {
             emote = e.remaining > dt ? (e.kind, e.remaining - dt) : nil
@@ -1311,14 +1311,14 @@ final class Cat {
 
         if activity == .sleep {
             // Purrs in its sleep without waking up.
-            if strokeAmount > 50, heartCooldown <= 0 {
+            if strokeAmount > 30, heartCooldown <= 0 {
                 world.spawnHearts(from: self, count: 1, burst: false)
                 heartCooldown = 0.7
                 happiness = min(1, happiness + 0.02)
             }
             return
         }
-        if activity != .petted, strokeAmount > 45 {
+        if activity != .petted, strokeAmount > 25 {
             world.finishCalculation(for: self)
             clearPlans()
             begin(.petted)

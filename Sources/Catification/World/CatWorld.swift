@@ -905,8 +905,9 @@ final class CatWorld {
 
     // MARK: - Mouse
 
-    private func topCat(at p: CGPoint) -> Cat? {
-        cats.filter { $0.canInteract && $0.hitRect.contains(p) }.max { $0.layer.zPosition < $1.layer.zPosition }
+    private func topCat(at p: CGPoint, margin: CGFloat = 0) -> Cat? {
+        cats.filter { $0.canInteract && $0.hitRect.insetBy(dx: -margin, dy: -margin).contains(p) }
+            .max { $0.layer.zPosition < $1.layer.zPosition }
     }
 
     private func wantsMouse(at p: CGPoint) -> Bool {
@@ -924,7 +925,8 @@ final class CatWorld {
     private func handleStroking() {
         guard drag == nil, !pointIsCovered(mouse) else { return }
         let distance = hypot(mouse.x - lastMouse.x, mouse.y - lastMouse.y)
-        guard distance > 0.4, distance < 150, let cat = topCat(at: mouse) else { return }
+        // A little more generous than the sprite itself: cats are small, hands are not steady.
+        guard distance > 0.4, distance < 150, let cat = topCat(at: mouse, margin: 6) else { return }
         cat.stroke(distance, world: self)
     }
 
@@ -1178,23 +1180,38 @@ final class CatWorld {
                 let speed = CGFloat.random(in: 90...170)
                 addParticle(.heart, at: head, velocity: CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed),
                             gravity: 320, life: .random(in: 1.1...1.6), pixel: p)
-            } else {
+            } else if hasHeadroom(above: head) {
                 let start = CGPoint(x: head.x + .random(in: -4...4) * cat.pixel, y: head.y + 2 * cat.pixel)
                 addParticle(.heart, at: start, velocity: CGVector(dx: .random(in: -22...22), dy: .random(in: 18...34)),
                             gravity: 0, life: .random(in: 0.9...1.3), pixel: p, drag: 1.2, wobble: 3)
+            } else {
+                // Up against the top of the screen (a cat on the menu bar): float out sideways
+                // and drift down instead, or the hearts would vanish off the edge at once.
+                let side: CGFloat = Bool.random() ? 1 : -1
+                let start = CGPoint(x: head.x + side * .random(in: 5...9) * cat.pixel, y: head.y - 2 * cat.pixel)
+                addParticle(.heart, at: start, velocity: CGVector(dx: side * .random(in: 25...45), dy: -.random(in: 10...25)),
+                            gravity: 15, life: .random(in: 1.1...1.5), pixel: p, drag: 0.8, wobble: 3)
             }
         }
     }
 
+    /// Whether something rising from `point` stays on screen for a moment.
+    private func hasHeadroom(above point: CGPoint) -> Bool {
+        playArea.maxY - point.y > 45
+    }
+
     func spawnHeart(at point: CGPoint, pixel: CGFloat) {
-        addParticle(.heart, at: point, velocity: CGVector(dx: 0, dy: 14), gravity: 0, life: 1.6, pixel: pixel, wobble: 2)
+        let rising = hasHeadroom(above: point)
+        addParticle(.heart, at: rising ? point : CGPoint(x: point.x, y: point.y - 16),
+                    velocity: CGVector(dx: 0, dy: rising ? 14 : -10), gravity: 0, life: 1.6, pixel: pixel, wobble: 2)
     }
 
     func spawnZ(from cat: Cat) {
         let head = cat.headPoint()
         let dir: CGFloat = cat.facingRight ? 1 : -1
-        addParticle(.zzz, at: CGPoint(x: head.x + dir * 4 * cat.pixel, y: head.y + 3 * cat.pixel),
-                    velocity: CGVector(dx: dir * 6, dy: 10), gravity: 0, life: 2.2,
+        let rising = hasHeadroom(above: head)
+        addParticle(.zzz, at: CGPoint(x: head.x + dir * (rising ? 4 : 8) * cat.pixel, y: head.y + (rising ? 3 : -2) * cat.pixel),
+                    velocity: CGVector(dx: dir * (rising ? 6 : 12), dy: rising ? 10 : -6), gravity: 0, life: 2.2,
                     pixel: max(1, cat.pixel - 1), wobble: 2)
     }
 
