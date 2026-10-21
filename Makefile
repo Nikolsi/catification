@@ -22,6 +22,7 @@ demos:
 
 banner: build
 	.build/debug/Catification --render-banner docs/media/banner.gif
+	.build/debug/Catification --render-social docs/media/social-preview.png
 
 sprites: build
 	mkdir -p .preview
