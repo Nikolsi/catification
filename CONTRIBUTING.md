@@ -1,6 +1,7 @@
 # Contributing to Catification
 
 Thanks for wanting to help the cats! Bug reports, ideas, pixel art, translations and code are all welcome.
+Not sure where to start? Say hi in [Discussions](https://github.com/Nikolsi/catification/discussions).
 
 ## Getting started
 
