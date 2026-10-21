@@ -1,0 +1,50 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Test
+        run: swift test
+
+      - name: Build universal app
+        run: scripts/build-app.sh --universal --version "${{ steps.version.outputs.version }}"
+
+      - name: Package
+        id: package
+        run: |
+          ZIP="Catification-${{ steps.version.outputs.version }}-macos-universal.zip"
+          ditto -c -k --keepParent build/Catification.app "$ZIP"
+          shasum -a 256 "$ZIP" > SHA256SUMS
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Release notes from CHANGELOG
+        run: |
+          awk -v v="${{ steps.version.outputs.version }}" '
+            $0 ~ "^## " { if (found) exit; if ($2 == v || index(v, $2) == 1) found = 1; next }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          printf '\n---\nFirst launch: the app is not notarized, see [Install](https://github.com/%s#install).\n' "$GITHUB_REPOSITORY" >> notes.md
+
+      - name: Draft release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body_path: notes.md
+          files: |
+            ${{ steps.package.outputs.zip }}
+            SHA256SUMS
