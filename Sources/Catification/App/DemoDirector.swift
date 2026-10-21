@@ -215,8 +215,8 @@ final class DemoDirector {
                     self?.cursorTimer = nil
                     return
                 }
-                let head = cat.headPoint()
-                let p = CGPoint(x: head.x - 6 * cat.pixel + CGFloat(sin(t * 5)) * 7 * cat.pixel, y: head.y - 2 * cat.pixel)
+                // Along the cat's back, like a hand would.
+                let p = CGPoint(x: cat.x + CGFloat(sin(t * 4)) * 7 * cat.pixel, y: cat.y + 8 * cat.pixel)
                 CGWarpMouseCursorPosition(CGPoint(x: frame.minX + p.x, y: primaryHeight - (frame.minY + p.y)))
             }
         }
