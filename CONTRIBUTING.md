@@ -65,6 +65,8 @@ When you add a new string in English, please add it to every existing `Localizab
 
 ## Pull requests
 
+`main` is protected: every change, the maintainer's included, goes through a pull request with green CI.
+
 - Keep changes focused; match the style of the surrounding code.
 - `make test` must pass. For behaviour changes, a short screen recording in the PR is gold.
 - The app must stay offline and must not read window contents or titles.
