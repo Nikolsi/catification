@@ -97,7 +97,7 @@ Handy flags: `Catification --settings` opens the settings window on launch, and 
 - Windows version.
 - iOS "cat room" app and a Dynamic Island companion.
 
-Ideas and bug reports are welcome in [Issues](../../issues).
+Bugs and feature requests go to [Issues](../../issues); questions, ideas and screenshots of your cats to [Discussions](../../discussions).
 
 ## Contributing
 
