@@ -1,4 +1,4 @@
-.PHONY: build app run dev test sprites banner clean
+.PHONY: build app run dev test sprites banner demos clean
 
 build:
 	swift build
@@ -16,6 +16,9 @@ dev: build
 
 test:
 	swift test
+
+demos:
+	./scripts/record-demos.sh
 
 banner: build
 	.build/debug/Catification --render-banner docs/media/banner.gif

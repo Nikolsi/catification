@@ -67,6 +67,8 @@ final class SettingsStore: ObservableObject {
     }
 
     private static let key = "catification.settings.v1"
+    /// False for demo recordings: nothing is read from or written to the user's settings.
+    private var persists = true
 
     init() {
         let snapshot = UserDefaults.standard.data(forKey: Self.key)
@@ -90,7 +92,24 @@ final class SettingsStore: ObservableObject {
         selectedCatID = cats.first?.id
     }
 
+    /// Settings that live only in memory, for demo recordings.
+    init(transientCats cats: [CatConfig], furniture: [Furniture], mode: WorldMode) {
+        persists = false
+        self.cats = cats
+        catsVisible = true
+        speed = 1
+        moodEmotes = true
+        virtualNotch = false
+        self.mode = mode
+        walkOnWindows = false
+        jumpMath = true
+        butterflies = false
+        climbIcons = false
+        self.furniture = furniture
+    }
+
     private func save() {
+        guard persists else { return }
         let snapshot = Snapshot(
             cats: cats, catsVisible: catsVisible, speed: speed, moodEmotes: moodEmotes, virtualNotch: virtualNotch,
             mode: mode, walkOnWindows: walkOnWindows, jumpMath: jumpMath, butterflies: butterflies, climbIcons: climbIcons, furniture: furniture,

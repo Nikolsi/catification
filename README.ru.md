@@ -15,6 +15,26 @@
 
 Catification — небольшое нативное приложение для macOS (Swift, AppKit, Core Animation), которое превращает рабочий стол в дом для пиксельных котиков. Они гуляют по меню-бару, проходят мимо чёлки MacBook через порталы в духе Portal, лазают по полкам и когтеточке и перед большим прыжком считают траекторию (иногда ошибаются).
 
+## Как это выглядит
+
+<table>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/media/demo-notch.gif" alt="Котики заходят в синий портал и выходят из оранжевого по бокам от чёлки"><br><sub>Мимо чёлки через порталы</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/demo-jump.gif" width="420" alt="Котик считает формулы и запрыгивает на две полки"><br><sub>Сначала посчитать прыжок</sub></td>
+    <td align="center"><img src="docs/media/demo-miss.gif" width="420" alt="Котик промахивается, повисает на полке, падает и пробует снова"><br><sub>…и иногда ошибиться</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/demo-butterflies.gif" width="420" alt="Два котика гоняются за бабочками, один прыгает с полки"><br><sub>Охота на бабочек</sub></td>
+    <td align="center"><img src="docs/media/demo-trash.gif" width="420" alt="Котик ныряет в мусорку и выкидывает бумажки и кости"><br><sub>Шебуршит в мусорке</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/demo-pet.gif" width="420" alt="Курсор гладит котика, летят сердечки, потом клик — жмяк"><br><sub>Гладим (и жмякаем)</sub></td>
+    <td align="center"><img src="docs/media/demo-play.gif" width="420" alt="Два котика гоняются друг за другом и садятся рядом"><br><sub>Догонялки</sub></td>
+  </tr>
+</table>
+
 ## Возможности
 
 - **Котики с характером.** Игривый, ленивый, любопытный, ласковый или вредный, у каждого своя энергия, счастье и голод. Гуляют, носятся, умываются, спят (часто рядом с другом), играют в догонялки и здороваются друг с другом.
@@ -58,6 +78,7 @@ cd catification
 make run        # собрать build/Catification.app и запустить
 make test       # юнит-тесты
 make sprites    # отрендерить все анимации всех окрасов в .preview/sprites.png
+make demos      # перезаписать гифки выше (нужен ffmpeg)
 ```
 
 Полезное: `Catification --settings` сразу открывает настройки, а с `CATIFICATION_DEBUG=1` котики пишут в stderr, чем заняты.

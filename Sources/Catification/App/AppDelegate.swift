@@ -3,7 +3,8 @@ import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
-    let store = SettingsStore()
+    private let demo = DemoDirector.requested.map(DemoDirector.init)
+    lazy var store: SettingsStore = demo?.makeStore() ?? SettingsStore()
     private var world: CatWorld!
     private var statusItem: NSStatusItem!
     private var settingsWindow: NSWindow?
@@ -26,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         statusItem.menu = menu
 
         if CommandLine.arguments.contains("--settings") { openSettings() }
+        demo?.start(in: world)
     }
 
     // MARK: - Status menu

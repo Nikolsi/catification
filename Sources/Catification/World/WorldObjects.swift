@@ -66,12 +66,12 @@ final class Ball {
                 vy = 0
             }
         }
-        if x < edge {
-            x = edge
+        if x < world.playArea.minX + edge {
+            x = world.playArea.minX + edge
             vx = abs(vx) * 0.6
         }
-        if x > world.geo.width - edge {
-            x = world.geo.width - edge
+        if x > world.playArea.maxX - edge {
+            x = world.playArea.maxX - edge
             vx = -abs(vx) * 0.6
         }
         roll += vx * d

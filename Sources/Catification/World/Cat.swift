@@ -86,6 +86,8 @@ final class Cat {
     private var climbTargetY: CGFloat = 0
     private(set) var climbPost: UUID?
     private var calcSpawn = 0.0
+    /// Demo recordings: miss the next big jump and fall, for the camera.
+    var demoMiss = false
 
     // Places and toys.
     private(set) var bedID: UUID?
@@ -189,6 +191,11 @@ final class Cat {
         vx = 0
         vy = 0
         begin(.falling)
+    }
+
+    /// Demo recordings: drop the cat in at a chosen spot.
+    func demoPlace(x newX: CGFloat) {
+        x = newX
     }
 
     /// The world changed shape (mode or screen): start over.
@@ -722,7 +729,7 @@ final class Cat {
         surface = nil
         failJump = false
 
-        if toY - y > 3 * catHeight, !routeHurried, Double.random(in: 0...1) < 0.12 {
+        if toY - y > 3 * catHeight, !routeHurried, demoMiss || Double.random(in: 0...1) < 0.12 {
             // Miscalculated: only just reach the edge and hang on it by the front paws.
             failJump = true
             hangPoint = CGPoint(x: h.landX, y: toY - CGFloat(CatArt.H - 1) * pixel)
@@ -744,7 +751,9 @@ final class Cat {
             begin(.falling)
             return
         }
-        if Double.random(in: 0...1) < 0.5, let s = world.surface(h.to), s.segmentIndex(containing: hangPoint.x, tolerance: 2) != nil {
+        let scrambleUp = !demoMiss && Double.random(in: 0...1) < 0.5
+        demoMiss = false
+        if scrambleUp, let s = world.surface(h.to), s.segmentIndex(containing: hangPoint.x, tolerance: 2) != nil {
             // Scrambles up after all.
             y = s.y
             surface = s.id
@@ -788,12 +797,12 @@ final class Cat {
         y += vy * d
 
         let edge = canvasSize.width * 0.4
-        if x < edge {
-            x = edge
+        if x < world.playArea.minX + edge {
+            x = world.playArea.minX + edge
             vx = abs(vx) * 0.5
         }
-        if x > world.geo.width - edge {
-            x = world.geo.width - edge
+        if x > world.playArea.maxX - edge {
+            x = world.playArea.maxX - edge
             vx = -abs(vx) * 0.5
         }
         let ceiling = world.ceiling(for: self)
@@ -1051,7 +1060,7 @@ final class Cat {
 
     // MARK: - Trash
 
-    private func goRummage(_ world: CatWorld) -> Bool {
+    func goRummage(_ world: CatWorld) -> Bool {
         guard let can = world.randomTrash(for: self) else { return false }
         trashID = can.id
         let side: CGFloat = x < can.x ? -1 : 1
@@ -1135,7 +1144,7 @@ final class Cat {
 
     // MARK: - Play
 
-    private func startPlay(with mate: Cat, world: CatWorld) {
+    func startPlay(with mate: Cat, world: CatWorld) {
         partner = mate
         approachTries = 0
         showEmote(.note, for: 1)

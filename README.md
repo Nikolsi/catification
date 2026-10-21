@@ -15,6 +15,26 @@
 
 Catification is a small native macOS app (Swift, AppKit, Core Animation) that turns your desktop into a home for pixel-art cats. They stroll along the menu bar, slip past the MacBook notch through Portal-style portals, climb shelves and scratching posts, and work out the trajectory before a big jump (sometimes they get it wrong).
 
+## See it in action
+
+<table>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/media/demo-notch.gif" alt="Cats walking into a blue portal and out of an orange one on either side of the notch"><br><sub>Slipping past the notch through portals</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/demo-jump.gif" width="420" alt="A cat does maths with floating formulas and jumps up two shelves"><br><sub>Working out the jump first</sub></td>
+    <td align="center"><img src="docs/media/demo-miss.gif" width="420" alt="A cat misses a jump, hangs off the shelf, falls and tries again"><br><sub>…and sometimes getting it wrong</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/demo-butterflies.gif" width="420" alt="Two cats chasing butterflies, one leaps off a shelf"><br><sub>Butterfly hunting</sub></td>
+    <td align="center"><img src="docs/media/demo-trash.gif" width="420" alt="A cat dives into a trash can and throws paper and bones out"><br><sub>Rummaging in the trash</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/demo-pet.gif" width="420" alt="The cursor pets a cat, hearts fly, then a click squishes it"><br><sub>Petting (and a squish)</sub></td>
+    <td align="center"><img src="docs/media/demo-play.gif" width="420" alt="Two cats chase each other and then sit together"><br><sub>Playing chase</sub></td>
+  </tr>
+</table>
+
 ## Features
 
 - **Cats with personalities.** Playful, lazy, curious, affectionate or grumpy, each with its own energy, happiness and hunger. They walk, zoom around, groom, nap (often next to a friend), play chase and say hello to each other.
@@ -56,6 +76,7 @@ cd catification
 make run        # builds build/Catification.app and launches it
 make test       # runs the unit tests
 make sprites    # renders every animation of every coat into .preview/sprites.png
+make demos      # re-records the GIFs above (needs ffmpeg)
 ```
 
 Handy flags: `Catification --settings` opens the settings window on launch, and `CATIFICATION_DEBUG=1` makes cats log what they are doing to stderr.

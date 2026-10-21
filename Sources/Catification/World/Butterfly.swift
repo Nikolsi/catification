@@ -40,9 +40,10 @@ final class Butterfly {
         sprites = (Self.render(open: true, palette), Self.render(open: false, palette))
         let fromLeft = Bool.random()
         let region = Self.region(world)
-        x = fromLeft ? -10 : world.geo.width + 10
+        let area = world.playArea
+        x = fromLeft ? area.minX + 10 : area.maxX - 10
         y = CGFloat.random(in: region)
-        target = CGPoint(x: .random(in: 40...(world.geo.width - 40)), y: .random(in: region))
+        target = CGPoint(x: .random(in: (area.minX + 40)...(area.maxX - 40)), y: .random(in: region))
         layer.anchorPoint = CGPoint(x: 0.5, y: 0)
         layer.magnificationFilter = .nearest
         layer.zPosition = 16
@@ -60,8 +61,10 @@ final class Butterfly {
     }
 
     private static func region(_ world: CatWorld) -> ClosedRange<CGFloat> {
-        let top = world.geo.height - 10
-        let bottom = world.geo.mode == .menuBar ? max(10, world.geo.menuBarY - 120) : (world.geo.groundY ?? 0) + 15
+        let area = world.playArea
+        let top = area.maxY - 10
+        let floor = world.geo.mode == .menuBar ? max(10, world.geo.menuBarY - 120) : (world.geo.groundY ?? 0) + 15
+        let bottom = max(floor, area.minY + 15)
         return bottom...max(bottom + 1, top)
     }
 
@@ -93,9 +96,9 @@ final class Butterfly {
 
         let region = Self.region(world)
         if isLeaving {
-            target = CGPoint(x: x < world.geo.width / 2 ? -60 : world.geo.width + 60, y: region.upperBound)
+            target = CGPoint(x: x < world.playArea.midX ? world.playArea.minX - 60 : world.playArea.maxX + 60, y: region.upperBound)
         } else if hypot(target.x - x, target.y - y) < 20 {
-            target = CGPoint(x: .random(in: 40...(world.geo.width - 40)), y: .random(in: region))
+            target = CGPoint(x: .random(in: (world.playArea.minX + 40)...(world.playArea.maxX - 40)), y: .random(in: region))
         }
 
         var ax = (target.x - x), ay = (target.y - y)
@@ -116,9 +119,9 @@ final class Butterfly {
         let flutter = CGFloat(sin(flap * 2.3)) * 40
         x += vx * d
         y += (vy + flutter) * d
-        y = min(max(y, region.lowerBound - 30), world.geo.height - 8)
+        y = min(max(y, region.lowerBound - 30), world.playArea.maxY - 8)
 
-        if isLeaving, x < -40 || x > world.geo.width + 40 { gone = true }
+        if isLeaving, x < world.playArea.minX - 40 || x > world.playArea.maxX + 40 { gone = true }
 
         // Sometimes settle on whatever is just below for a breather.
         if !isLeaving, startled == 0, catDistance > 90, Double.random(in: 0...1) < dt * 0.25,

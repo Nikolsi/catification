@@ -69,6 +69,13 @@ final class CatWorld {
     private var cancellables = Set<AnyCancellable>()
 
     var contextMenuProvider: ((Cat) -> NSMenu)?
+
+    /// Demo recordings confine the world to a "stage" with its own backdrop.
+    private(set) var demoStage: CGRect?
+    private var backdropLayers: [CALayer] = []
+
+    /// Where cats, toys and butterflies may go. The whole panel, unless a demo stage is set.
+    var playArea: CGRect { demoStage ?? CGRect(origin: .zero, size: geo.frame.size) }
     var onEditModeChange: ((Bool) -> Void)?
 
     init(store: SettingsStore) {
@@ -125,7 +132,7 @@ final class CatWorld {
                 guard let self else { return }
                 self.syncScheduled = false
                 let g = WorldGeometry.current(mode: self.store.mode, virtualNotch: self.store.virtualNotch)
-                if g != self.geo { self.relayout(g) }
+                if g != self.geo, self.demoStage == nil { self.relayout(g) }
                 self.syncFurniture()
                 self.syncCats()
                 self.applyVisibility()
@@ -289,11 +296,12 @@ final class CatWorld {
     private func rebuildSurfaces() {
         var list: [Surface] = []
         var newLinks: [ClimbLink] = []
-        if geo.mode.hasMenuBar {
-            list.append(Surface(id: .menuBar, y: geo.menuBarY, segments: [0...geo.width], anchor: CGPoint(x: 0, y: geo.menuBarY)))
+        let area = playArea
+        if geo.mode.hasMenuBar, area.maxY >= geo.menuBarY {
+            list.append(Surface(id: .menuBar, y: geo.menuBarY, segments: [area.minX...area.maxX], anchor: CGPoint(x: 0, y: geo.menuBarY)))
         }
-        if let g = geo.groundY {
-            list.append(Surface(id: .ground, y: g, segments: [0...geo.width], anchor: CGPoint(x: 0, y: g)))
+        if let g = geo.groundY, area.minY <= g + 1 {
+            list.append(Surface(id: .ground, y: g, segments: [area.minX...area.maxX], anchor: CGPoint(x: 0, y: g)))
         }
         if geo.mode.hasFurniture {
             let p = geo.furniturePixel
@@ -314,12 +322,12 @@ final class CatWorld {
                 }
             }
         }
-        if geo.mode == .screen, store.walkOnWindows {
+        if geo.mode == .screen, store.walkOnWindows, demoStage == nil {
             list += windowTracker.surfaces(width: geo.width, below: geo.menuBarY, above: geo.groundY ?? 0,
                                            clearance: 16 * geo.furniturePixel)
         }
 
-        if climbingIcons {
+        if climbingIcons, demoStage == nil {
             list += iconTracker.surfaces(covering: windowTracker.windows, clearance: 16 * geo.furniturePixel)
         }
 
@@ -396,13 +404,13 @@ final class CatWorld {
 
     /// The highest the feet of a cat can be before its head leaves the screen.
     func ceiling(for cat: Cat) -> CGFloat {
-        geo.height - CGFloat(CatArt.H - 3) * cat.pixel
+        playArea.maxY - CGFloat(CatArt.H - 3) * cat.pixel
     }
 
     func clampOnSurface(_ value: CGFloat, _ id: SurfaceID, for cat: Cat) -> CGFloat {
         let wide = id == .menuBar || id == .ground
         let edge = wide ? cat.halfWidth + 2 : cat.halfWidth * 0.5
-        var v = min(max(value, edge), geo.width - edge)
+        var v = min(max(value, playArea.minX + edge), playArea.maxX - edge)
         guard let s = surfaces[id], let i = s.segmentIndex(containing: v) ?? s.nearestSegmentIndex(to: v) else { return v }
         let seg = s.segments[i]
         let m: CGFloat = wide ? 0 : 3 * cat.pixel
@@ -476,18 +484,18 @@ final class CatWorld {
 
     func randomSpot(on id: SurfaceID, near x: CGFloat, for cat: Cat) -> CGFloat {
         guard let s = surfaces[id] else { return x }
-        if id == .menuBar { return clampOnSurface(.random(in: 0...geo.width), id, for: cat) }
+        if id == .menuBar { return clampOnSurface(.random(in: playArea.minX...playArea.maxX), id, for: cat) }
         let seg = s.segments[s.segmentIndex(containing: x, tolerance: 3) ?? s.nearestSegmentIndex(to: x) ?? 0]
         return clampOnSurface(.random(in: seg), id, for: cat)
     }
 
     func spawnPoint(for cat: Cat) -> CGPoint {
-        if geo.mode.hasMenuBar {
-            let x = clampOnSurface(.random(in: 0...geo.width), .menuBar, for: cat)
+        if geo.mode.hasMenuBar, playArea.maxY >= geo.menuBarY {
+            let x = clampOnSurface(.random(in: playArea.minX...playArea.maxX), .menuBar, for: cat)
             return CGPoint(x: x, y: min(ceiling(for: cat), geo.menuBarY + 10))
         }
         let ground = geo.groundY ?? 0
-        return CGPoint(x: clampOnSurface(.random(in: 0...geo.width), .ground, for: cat), y: ground + 80)
+        return CGPoint(x: clampOnSurface(.random(in: playArea.minX...playArea.maxX), .ground, for: cat), y: ground + 80)
     }
 
     var mouseNearCats: Bool {
@@ -1056,6 +1064,49 @@ final class CatWorld {
         p.left.close()
         p.right.close()
         portals = nil
+    }
+
+    // MARK: - Demo stage
+
+    /// Confines the world to `stage` (panel coordinates) and paints a backdrop behind it, so a
+    /// screen recording shows only the cats. `floor` raises the ground inside the stage.
+    func setDemoStage(_ stage: CGRect, floor: CGFloat, notch: CGRect?) {
+        demoStage = stage
+        if geo.groundY != nil, floor > 0 { geo.groundY = stage.minY + floor }
+        for l in backdropLayers { l.removeFromSuperlayer() }
+        backdropLayers = []
+
+        let wall = CAGradientLayer()
+        wall.frame = stage
+        wall.colors = [RGB(hex: 0x3B3552).nsColor.cgColor, RGB(hex: 0x262433).nsColor.cgColor]
+        wall.startPoint = CGPoint(x: 0.5, y: 1)
+        wall.endPoint = CGPoint(x: 0.5, y: 0)
+        wall.zPosition = 1
+        backdropLayers.append(wall)
+        if floor > 0 {
+            let boards = CALayer()
+            boards.frame = CGRect(x: stage.minX, y: stage.minY, width: stage.width, height: floor)
+            boards.backgroundColor = RGB(hex: 0x6B4A35).nsColor.cgColor
+            let edge = CALayer()
+            edge.frame = CGRect(x: stage.minX, y: stage.minY + floor - 3, width: stage.width, height: 3)
+            edge.backgroundColor = RGB(hex: 0x8C6446).nsColor.cgColor
+            for l in [boards, edge] { l.zPosition = 2 }
+            backdropLayers += [boards, edge]
+        }
+        if let notch {
+            // The real notch is hardware: on a recording the pixels under it are visible.
+            let cutout = CAShapeLayer()
+            cutout.path = CGPath(roundedRect: notch.insetBy(dx: 0, dy: -10), cornerWidth: 9, cornerHeight: 9, transform: nil)
+            cutout.fillColor = CGColor(gray: 0, alpha: 1)
+            cutout.zPosition = 49
+            backdropLayers.append(cutout)
+        }
+        for l in backdropLayers {
+            l.disableImplicitAnimations()
+            root.addSublayer(l)
+        }
+        anchors = [:]
+        rebuildSurfaces()
     }
 
     // MARK: - Jump calculations

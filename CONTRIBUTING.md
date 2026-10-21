@@ -27,6 +27,27 @@ make sprites    # every animation of every coat in .preview/sprites.png
 
 Sprites are ASCII grids. Letters are colour *roles*, not colours: `F` fur, `S` stripes, `D` far-side fur, `B` belly and paws, `P` pink, `E` eyes, `K` ink. Outlines are added automatically. After changing art, run `make sprites` and look at the sheet.
 
+## Demo recordings
+
+The GIFs in the README are recorded from scripted scenes, so they're easy to redo when behaviour
+or art changes, and new features can come with their own clip.
+
+```bash
+brew install ffmpeg
+make demos                          # every scene
+scripts/record-demos.sh jump trash  # just some
+```
+
+- Scenes live in `Sources/Catification/App/DemoDirector.swift`. Each one sets up throwaway cats and
+  furniture, a small stage with a backdrop (so nothing else on your screen is recorded) and a short
+  script of what the cats do. `Catification --demo <scene>` runs one by hand.
+- To add a scene:
+  1. Add a case to `Scene` and give it a `duration`.
+  2. Fill in its cats and furniture in `makeStore()`, start positions in `startPositions`, and actions in `script()`.
+  3. Add the name to the list in `scripts/record-demos.sh` and show the GIF in both READMEs.
+- Your terminal needs the Screen Recording permission. Don't touch the mouse while recording: the
+  `pet` scene moves the cursor itself, and the others park it off-stage.
+
 ## Translations
 
 User-facing strings use their English text as the key:
