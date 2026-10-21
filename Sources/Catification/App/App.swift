@@ -9,6 +9,10 @@ enum CatificationApp {
             SpriteDump.run(to: args[i + 1])
             return
         }
+        if let i = args.firstIndex(of: "--render-social"), args.count > i + 1 {
+            SocialPreviewRenderer.run(to: args[i + 1])
+            return
+        }
         if let i = args.firstIndex(of: "--render-banner"), args.count > i + 1 {
             BannerRenderer.run(to: args[i + 1])
             return
