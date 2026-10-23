@@ -653,6 +653,9 @@ final class Cat {
         case .high:
             guard let spot = world.highSpot(for: self) else { return false }
             return go(to: spot.surface, x: spot.x, then: .sleep, world: world)
+        default:
+            guard let spot = world.napSpot(place, for: self) else { return false }
+            return go(to: spot.surface, x: spot.x, then: .sleep, world: world)
         }
     }
 
