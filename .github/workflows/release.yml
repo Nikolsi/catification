@@ -33,10 +33,7 @@ jobs:
 
       - name: Release notes from CHANGELOG
         run: |
-          awk -v v="${{ steps.version.outputs.version }}" '
-            $0 ~ "^## " { if (found) exit; if ($2 == v || index(v, $2) == 1) found = 1; next }
-            found { print }
-          ' CHANGELOG.md > notes.md
+          scripts/release-notes.sh "${{ steps.version.outputs.version }}" "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" > notes.md
           printf '\n---\nFirst launch: the app is not notarized, see [Install](https://github.com/%s#install).\n' "$GITHUB_REPOSITORY" >> notes.md
           printf 'Built by [this workflow run](%s/%s/actions/runs/%s) from %s.\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$GITHUB_SHA" >> notes.md
 
