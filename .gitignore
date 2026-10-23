@@ -3,3 +3,4 @@ build/
 .preview/
 .swiftpm/
 .DS_Store
+.claude/settings.local.json

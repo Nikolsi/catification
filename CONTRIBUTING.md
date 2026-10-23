@@ -15,6 +15,7 @@ make sprites    # every animation of every coat in .preview/sprites.png
 - `CATIFICATION_DEBUG=1 make dev` prints every activity change of every cat, which helps a lot when tuning behaviour.
 - `Catification --settings` opens the settings window on launch.
 - `scripts/build-app.sh --universal --version 1.2.3` is what the release workflow runs.
+- Working with a coding agent? [AGENTS.md](AGENTS.md) and [docs/agents/](docs/agents/) are written for it (and are a quick tour for people too).
 
 ## Where things live
 
