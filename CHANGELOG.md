@@ -16,7 +16,7 @@ First public release.
 
 - Pixel cats with personalities, moods, energy and hunger that walk, play, groom, sleep and greet each other.
 - Petting, squishing, picking up and tossing cats with the mouse.
-- Portal-style transit past the MacBook notch.
+- Portal-style transit past the MacBook notch (idea by @nanot1m).
 - Three worlds: menu bar only, whole screen above windows, desktop behind windows.
 - Route planning over the menu bar, floor, shelves, window tops and desktop icons, with a jump "calculation" animation and the occasional missed jump.
 - Furniture: shelves, scratching post, cat bed, food bowl, trash can, with an arrange mode.

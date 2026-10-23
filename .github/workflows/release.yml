@@ -12,6 +12,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0  # the release notes compare against the previous tag
 
       - name: Version from tag
         id: version
@@ -32,6 +34,8 @@ jobs:
           echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
 
       - name: Release notes from CHANGELOG
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           scripts/release-notes.sh "${{ steps.version.outputs.version }}" "$GITHUB_REPOSITORY" "$GITHUB_REF_NAME" > notes.md
           printf '\n---\nFirst launch: the app is not notarized, see [Install](https://github.com/%s#install).\n' "$GITHUB_REPOSITORY" >> notes.md
