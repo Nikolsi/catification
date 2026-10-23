@@ -26,7 +26,7 @@ enum WorldMode: String, Codable, CaseIterable, Identifiable {
 }
 
 enum FurnitureKind: String, Codable, CaseIterable, Identifiable {
-    case shelf, post, bed, bowl, trash, box, laundry, wardrobe, flowerPot
+    case shelf, post, bed, bowl, trash, box, closedBox, laundry, wardrobe, flowerPot
 
     var id: String { rawValue }
 
@@ -37,7 +37,8 @@ enum FurnitureKind: String, Codable, CaseIterable, Identifiable {
         case .bed: L("Cat bed")
         case .bowl: L("Bowl")
         case .trash: L("Trash can")
-        case .box: L("Cardboard box")
+        case .box: L("Open box")
+        case .closedBox: L("Closed box")
         case .laundry: L("Pile of laundry")
         case .wardrobe: L("Wardrobe")
         case .flowerPot: L("Flower pot")

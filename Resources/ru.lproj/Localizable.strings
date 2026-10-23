@@ -234,11 +234,13 @@
 "Naps wherever it happens to be." = "Спит там, где застанет сон.";
 "Add a spot" = "Добавить место";
 "1× a usual spot, ★ the very favourite." = "1× — обычное место, ★ — самое любимое.";
-"Cardboard box" = "Коробка";
 "Pile of laundry" = "Гора вещей";
 "Wardrobe" = "Шкаф";
 "Flower pot" = "Цветочный горшок";
-"In a cardboard box" = "В коробке";
 "In the pile of laundry" = "В горе вещей";
 "On the wardrobe's bottom shelf" = "В шкафу на нижней полочке";
 "In the flower pot" = "В цветочном горшке";
+"Open box" = "Открытая коробка";
+"Closed box" = "Закрытая коробка";
+"In an open box" = "В открытой коробке";
+"On top of a closed box" = "На закрытой коробке";

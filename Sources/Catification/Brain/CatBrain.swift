@@ -27,7 +27,7 @@ enum CatAction: String, Codable, CaseIterable, CodingKeyRepresentable, Identifia
 
 /// Favourite places, used when a cat picks somewhere to nap.
 enum CatPlace: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiable {
-    case bed, high, friends, perch, shelf, menuBar, floor, windows, cursor, bowl, trash, box, laundry, wardrobe, flowerPot
+    case bed, high, friends, perch, shelf, menuBar, floor, windows, cursor, bowl, trash, box, closedBox, laundry, wardrobe, flowerPot
 
     var id: String { rawValue }
 
@@ -44,7 +44,8 @@ enum CatPlace: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiab
         case .cursor: L("Near your cursor")
         case .bowl: L("By the food bowl")
         case .trash: L("By the trash can")
-        case .box: L("In a cardboard box")
+        case .box: L("In an open box")
+        case .closedBox: L("On top of a closed box")
         case .laundry: L("In the pile of laundry")
         case .wardrobe: L("On the wardrobe's bottom shelf")
         case .flowerPot: L("In the flower pot")

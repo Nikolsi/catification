@@ -155,7 +155,8 @@ enum PropArt {
     // cat looks like it's inside. `napLift` is how high above the bottom the cat lies, in pixels.
 
     static let boxWidth = 20
-    static let boxNapLift: CGFloat = 5
+    /// Low enough that only the ears of a cat napping inside show above the front.
+    static let boxNapLift: CGFloat = 2
 
     @MainActor static func box(front: Bool) -> Art {
         cached(front ? "boxFront" : "boxBack") {
@@ -178,6 +179,26 @@ enum PropArt {
             } else {
                 c.draw(rows, at: 1, 1, kind: .body, outline: .hard)
             }
+            return c
+        }
+    }
+
+    /// A taped-up box: no way in, but a fine thing to sleep on top of.
+    @MainActor static func closedBox() -> Art {
+        cached("closedBox") {
+            let rows = [
+                "aaaaaaaaaaaaaaaaaaaa",
+                "AAAAAAAAAeeAAAAAAAAA",
+                "AAAAAAAAAeeAAAAAAAAA",
+                "aaaaaaaaaeeaaaaaaaaa",
+                "AAAAAAAAAeeAAAAAAAAA",
+                "AAAAAAAAAeeAAAAAAAAA",
+                "AAAAAAAAAeeAAAAAAAAA",
+                "aAAAAAAAAeeAAAAAAAAa",
+                "aaaaaaaaaaaaaaaaaaaa",
+            ]
+            var c = PixelCanvas(width: boxWidth + 2, height: rows.count + 2)
+            c.draw(rows, at: 1, 1, kind: .body, outline: .hard)
             return c
         }
     }

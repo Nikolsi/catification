@@ -55,6 +55,7 @@ struct EditPaletteView: View {
         case .bowl: PropArt.bowl(food: 2).image
         case .trash: PropArt.trash(front: false).image
         case .box: PropArt.box(front: false).image
+        case .closedBox: PropArt.closedBox().image
         case .laundry: PropArt.laundry(front: false).image
         case .wardrobe: PropArt.wardrobe(front: false).image
         case .flowerPot: PropArt.flowerPot(squashed: false, front: false).image
