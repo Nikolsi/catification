@@ -19,7 +19,7 @@ Catification — небольшое нативное приложение для
 
 <table>
   <tr>
-    <td colspan="2" align="center"><img src="docs/media/demo-notch.gif" alt="Котики заходят в синий портал и выходят из оранжевого по бокам от чёлки"><br><sub>Мимо чёлки через порталы</sub></td>
+    <td colspan="2" align="center"><img src="docs/media/demo-notch.gif" alt="Котики заходят в синий портал и выходят из оранжевого по бокам от чёлки"><br><sub>Мимо чёлки через порталы · идея <a href="https://github.com/nanot1m">@nanot1m</a></sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/media/demo-jump.gif" width="420" alt="Котик считает формулы и запрыгивает на две полки"><br><sub>Сначала посчитать прыжок</sub></td>

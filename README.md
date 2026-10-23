@@ -19,7 +19,7 @@ Catification is a small native macOS app (Swift, AppKit, Core Animation) that tu
 
 <table>
   <tr>
-    <td colspan="2" align="center"><img src="docs/media/demo-notch.gif" alt="Cats walking into a blue portal and out of an orange one on either side of the notch"><br><sub>Slipping past the notch through portals</sub></td>
+    <td colspan="2" align="center"><img src="docs/media/demo-notch.gif" alt="Cats walking into a blue portal and out of an orange one on either side of the notch"><br><sub>Slipping past the notch through portals · idea by <a href="https://github.com/nanot1m">@nanot1m</a></sub></td>
   </tr>
   <tr>
     <td align="center"><img src="docs/media/demo-jump.gif" width="420" alt="A cat does maths with floating formulas and jumps up two shelves"><br><sub>Working out the jump first</sub></td>
