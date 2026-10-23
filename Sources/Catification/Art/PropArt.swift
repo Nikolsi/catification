@@ -18,7 +18,8 @@ enum PropArt {
         // Cardboard box
         "A": RGB(hex: 0xC8955A), "a": RGB(hex: 0xA0703D), "e": RGB(hex: 0xDDB27A), "N": RGB(hex: 0x4A3424),
         // A pile of laundry
-        "B": RGB(hex: 0x5B8BD6), "P": RGB(hex: 0xE88AA8), "E": RGB(hex: 0xE8C35A), "V": RGB(hex: 0x7FB86A), "Z": RGB(hex: 0xE9E6F2),
+        "B": RGB(hex: 0x4F7BC8), "P": RGB(hex: 0xE88AA8), "E": RGB(hex: 0xE8C35A), "V": RGB(hex: 0x7FB86A), "Z": RGB(hex: 0xEFEAF4),
+        "h": RGB(hex: 0xD9534F),
         // Flower pot
         "Q": RGB(hex: 0xC8643C), "q": RGB(hex: 0x9E4A2A), "F": RGB(hex: 0xDB7E55), "S": RGB(hex: 0x5A3A25),
         "J": RGB(hex: 0x4F9E4A), "j": RGB(hex: 0x7CC46A), "X": RGB(hex: 0xF2C14E),
@@ -181,26 +182,50 @@ enum PropArt {
         }
     }
 
-    static let laundryWidth = 22
+    static let laundryWidth = 28
     static let laundryNapLift: CGFloat = 3
 
+    /// A pile of clothes: jeans at the bottom, a striped sweater, a T-shirt and a sock on top.
+    /// Each garment has its own outline so they read as separate things.
     @MainActor static func laundry(front: Bool) -> Art {
         cached(front ? "laundryFront" : "laundryBack") {
-            let rows = [
-                "......BBBB....EEE.....",
-                "....BBBBBBB.EEEEEE....",
-                "..PPPBBBBBBBEEEEEEVV..",
-                ".PPPPPBBBZZBBEEEEVVVV.",
-                "PPPPPPPBZZZBEEEEVVVVVV",
-                "PPPPVVVVBBBBBBBEEEVVVV",
-                "PPVVVVVVVBBBZZBBBEEEVV",
-                "VVVVVVPPPPPPPPBBBBBBBB",
+            let jeans = [
+                "...BBBBBBBBBBBBBBBBBBBBBB...",
+                ".BBBBLBBBBBBBBBBBBBBBLBBBBB.",
+                "BBBBBLBBBBBBBBBBBBBBBLBBBBBB",
+                "BBBBBBBBBBBBB..BBBBBBBBBBBBB",
             ]
-            var c = PixelCanvas(width: laundryWidth + 2, height: rows.count + 2)
+            let sweater = [
+                ".....hhZZhh....",
+                "...hhZZhhZZhh..",
+                "..hhZZhhZZhhZh.",
+                ".hhZZhhZZhhZZhh",
+                "hhZZhhZZhhZZhh.",
+                "hh.............",
+                "ZZ.............",
+            ]
+            let shirt = [
+                ".....EEEE.......",
+                "..EEEEEEEEEE....",
+                ".EEEEEEEEEEEEE..",
+                "EEEEEEEEEEEEEEE.",
+                "EEEEEEEEEEEEEEEE",
+                ".EEEEEEEEEEEEEE.",
+            ]
+            let sock = [
+                "PP...",
+                "PP...",
+                "PPPZZ",
+            ]
+            var c = PixelCanvas(width: laundryWidth + 2, height: 17)
             if front {
-                c.draw(Array(rows[4...]), at: 1, 5, kind: .body, outline: .hard)
+                // The jeans in front hide the napping cat's lower half.
+                c.draw(jeans, at: 1, 12, kind: .body, outline: .hard)
             } else {
-                c.draw(rows, at: 1, 1, kind: .body, outline: .hard)
+                c.draw(jeans, at: 1, 12, kind: .body, outline: .hard)
+                c.draw(shirt, at: 12, 6, kind: .leg, outline: .hard)
+                c.draw(sweater, at: 1, 5, kind: .arm, outline: .hard)
+                c.draw(sock, at: 13, 2, kind: .tail, outline: .hard)
             }
             return c
         }
