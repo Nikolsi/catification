@@ -206,46 +206,57 @@ enum PropArt {
         }
     }
 
-    static let potWidth = 14
-    static let potNapLift: CGFloat = 4
+    static let potWidth = 22
+    static let potNapLift: CGFloat = 6
 
-    /// A potted plant. When a cat naps in it the plant is squashed flat.
+    /// A potted plant. When a cat naps in it the plant is squashed flat, and the crushed leaves
+    /// stick out from under the cat (they're part of the front, drawn over it).
     @MainActor static func flowerPot(squashed: Bool, front: Bool) -> Art {
         cached("pot\(squashed)\(front)") {
-            let plant = squashed ? [
-                "..............",
-                "..............",
-                "..............",
-                "..............",
-                "..............",
-                "..............",
-                ".jJJj....jJJj.",
-                "jJJJJj..jJJJJj",
-            ] : [
-                "......X.......",
-                ".....jJJj.....",
-                "..jj.jJJj.jj..",
-                ".jJJj.JJ.jJJj.",
-                "..jJJjJJjJJj..",
-                "....jJJJJj....",
-                "......JJ......",
-                "......JJ......",
+            let upright = [
+                "..........X...........",
+                ".........jJJj.........",
+                "......jj.jJJj.jj......",
+                ".....jJJj.JJ.jJJj.....",
+                "......jJJjJJjJJj......",
+                "........jJJJJj........",
+                "..........JJ..........",
+                "..........JJ..........",
+            ]
+            let crushed = [
+                "......................",
+                "......................",
+                "......................",
+                "......................",
+                "......................",
+                "X.....................",
+                "jJj.....j....j....jJj.",
+                "jJJJj..jJj..jJj..jJJJj",
             ]
             let pot = [
-                "FFFFFFFFFFFFFF",
-                ".QQQQQQQQQQQQ.",
-                ".QQQQQQQQQQQQ.",
-                "..QQQQQQQQQQ..",
-                "..QQQQQQQQQQ..",
-                "...qqqqqqqq...",
+                "....FFFFFFFFFFFFFF....",
+                ".....QQQQQQQQQQQQ.....",
+                ".....QQQQQQQQQQQQ.....",
+                "......QQQQQQQQQQ......",
+                "......QQQQQQQQQQ......",
+                ".......qqqqqqqq.......",
             ]
-            var c = PixelCanvas(width: potWidth + 2, height: plant.count + pot.count + 2)
-            if front {
-                c.draw(pot, at: 1, 1 + plant.count, kind: .body, outline: .hard)
-            } else {
-                c.draw(plant, at: 1, 1, kind: .head, outline: .soft)
-                c.draw(["SSSSSSSSSSSSSS"], at: 1, plant.count, kind: .body, outline: .none)
-                c.draw(pot, at: 1, 1 + plant.count, kind: .body, outline: .hard)
+            let soil = ["....SSSSSSSSSSSSSS...."]
+            var c = PixelCanvas(width: potWidth + 2, height: upright.count + pot.count + 2)
+            let potRow = 1 + upright.count
+            switch (squashed, front) {
+            case (false, false):
+                c.draw(upright, at: 1, 1, kind: .head, outline: .soft)
+                c.draw(soil, at: 1, potRow - 1, kind: .body, outline: .none)
+                c.draw(pot, at: 1, potRow, kind: .body, outline: .hard)
+            case (false, true):
+                c.draw(pot, at: 1, potRow, kind: .body, outline: .hard)
+            case (true, false):
+                c.draw(soil, at: 1, potRow - 1, kind: .body, outline: .none)
+                c.draw(pot, at: 1, potRow, kind: .body, outline: .hard)
+            case (true, true):
+                c.draw(pot, at: 1, potRow, kind: .body, outline: .hard)
+                c.draw(crushed, at: 1, 1, kind: .head, outline: .hard)
             }
             return c
         }
