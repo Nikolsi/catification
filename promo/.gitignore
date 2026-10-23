@@ -1,0 +1,5 @@
+node_modules/
+out/
+public/raw.mp4
+public/timeline.json
+public/banner.gif

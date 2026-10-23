@@ -50,6 +50,16 @@ scripts/record-demos.sh jump trash  # just some
 - Your terminal needs the Screen Recording permission. Don't touch the mouse while recording: the
   `pet` scene moves the cursor itself, and the others park it off-stage.
 
+## The trailer
+
+`make trailer` records the trailer footage from the `trailer` demo scene and composes it with [Remotion](https://www.remotion.dev)
+into `docs/media/trailer.mp4`: camera moves, slow motion on the missed jump and the end card.
+
+- The story is scripted in `DemoDirector.swift`. The composition lives in `promo/src/Trailer.tsx`; it is timed by the events the scene reports
+  (portal, calculate, jump, hang), so it keeps working when the story changes.
+- `scripts/record-trailer.sh --render` re-renders from the last recording; `cd promo && npm run studio` opens Remotion Studio for tweaking.
+- Needs a MacBook with a notch, ffmpeg and Node.js. `promo/.npmrc` points at the public npm registry.
+
 ## Credit
 
 Ideas count as contributions too. When a change lands, its `CHANGELOG.md` line credits the people behind it:

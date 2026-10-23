@@ -73,6 +73,7 @@ final class CatWorld {
     /// Demo recordings confine the world to a "stage" with its own backdrop.
     private(set) var demoStage: CGRect?
     private var backdropLayers: [CALayer] = []
+    private var demoClock: CATextLayer?
 
     /// Where cats, toys and butterflies may go. The whole panel, unless a demo stage is set.
     var playArea: CGRect { demoStage ?? CGRect(origin: .zero, size: geo.frame.size) }
@@ -716,6 +717,13 @@ final class CatWorld {
         return false
     }
 
+    /// Demo scenes set furniture before the first frame; apply it right away.
+    func reloadFurnitureForDemo() {
+        syncFurniture()
+        anchors = [:]
+        rebuildSurfaces()
+    }
+
     private func syncFurniture() {
         guard !furnitureDragging else { return }
         furniture = store.furniture
@@ -1172,7 +1180,7 @@ final class CatWorld {
 
     /// Confines the world to `stage` (panel coordinates) and paints a backdrop behind it, so a
     /// screen recording shows only the cats. `floor` raises the ground inside the stage.
-    func setDemoStage(_ stage: CGRect, floor: CGFloat, notch: CGRect?) {
+    func setDemoStage(_ stage: CGRect, floor: CGFloat, notch: CGRect?, menuBar: Bool = false) {
         demoStage = stage
         if geo.groundY != nil, floor > 0 { geo.groundY = stage.minY + floor }
         for l in backdropLayers { l.removeFromSuperlayer() }
@@ -1195,6 +1203,49 @@ final class CatWorld {
             for l in [boards, edge] { l.zPosition = 2 }
             backdropLayers += [boards, edge]
         }
+        if menuBar {
+            // A recognisable macOS menu bar, so the cats obviously live on a Mac.
+            let height = geo.menuBarHeight
+            let bar = CALayer()
+            bar.frame = CGRect(x: stage.minX, y: geo.menuBarY, width: stage.width, height: height)
+            bar.backgroundColor = RGB(hex: 0x16151C).nsColor.cgColor
+            bar.zPosition = 1.5
+            backdropLayers.append(bar)
+            let scale = panel.backingScaleFactor
+            @discardableResult
+            func label(_ text: String, x: CGFloat, alignRight: Bool = false, bold: Bool = false) -> CATextLayer {
+                let font = NSFont.systemFont(ofSize: 13, weight: bold ? .bold : .medium)
+                let attributed = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: NSColor(white: 0.92, alpha: 1)])
+                let size = attributed.size()
+                let layer = CATextLayer()
+                layer.string = attributed
+                layer.contentsScale = scale
+                layer.frame = CGRect(x: alignRight ? x - size.width : x, y: geo.menuBarY + (height - size.height) / 2,
+                                     width: ceil(size.width), height: ceil(size.height))
+                layer.zPosition = 1.6
+                backdropLayers.append(layer)
+                return layer
+            }
+            if let apple = NSImage(systemSymbolName: "applelogo", accessibilityDescription: nil)?
+                .withSymbolConfiguration(.init(pointSize: 14, weight: .medium)) {
+                let tinted = NSImage(size: apple.size, flipped: false) { rect in
+                    apple.draw(in: rect)
+                    NSColor(white: 0.92, alpha: 1).set()
+                    rect.fill(using: .sourceAtop)
+                    return true
+                }
+                let layer = CALayer()
+                layer.contents = tinted
+                layer.contentsScale = scale
+                layer.frame = CGRect(x: stage.minX + 14, y: geo.menuBarY + (height - apple.size.height) / 2,
+                                     width: apple.size.width, height: apple.size.height)
+                layer.zPosition = 1.6
+                backdropLayers.append(layer)
+            }
+            label("Finder", x: stage.minX + 40, bold: true)
+            label("File   Edit   View", x: stage.minX + 92)
+            demoClock = label("Tue 9:40", x: stage.maxX - 14, alignRight: true)
+        }
         if let notch {
             // The real notch is hardware: on a recording the pixels under it are visible.
             let cutout = CAShapeLayer()
@@ -1209,6 +1260,13 @@ final class CatWorld {
         }
         anchors = [:]
         rebuildSurfaces()
+    }
+
+    /// The clock in a demo menu bar ticks over when a recording's story starts: a visible
+    /// sync mark for the trailer script.
+    func tickDemoClock() {
+        guard let clock = demoClock, let text = clock.string as? NSAttributedString else { return }
+        clock.string = NSAttributedString(string: "Tue 9:41", attributes: text.attributes(at: 0, effectiveRange: nil))
     }
 
     // MARK: - Jump calculations

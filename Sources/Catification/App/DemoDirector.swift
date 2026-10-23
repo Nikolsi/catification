@@ -7,7 +7,7 @@ import AppKit
 @MainActor
 final class DemoDirector {
     enum Scene: String, CaseIterable {
-        case notch, jump, miss, trash, butterflies, pet, play, naps
+        case notch, jump, miss, trash, butterflies, pet, play, naps, trailer
 
         /// How long the recording script should record, in seconds.
         var duration: Double {
@@ -20,6 +20,7 @@ final class DemoDirector {
             case .pet: 9
             case .play: 11
             case .naps: 10
+            case .trailer: 22
             }
         }
     }
@@ -32,6 +33,25 @@ final class DemoDirector {
 
     let scene: Scene
     private weak var world: CatWorld?
+    /// The director of the running demo, if any, so the world can report key moments.
+    private(set) static weak var current: DemoDirector?
+    private var startTime = CACurrentMediaTime()
+
+    /// Prints a key moment for the trailer to time and aim its camera moves:
+    /// "EVENT <name> <seconds> <cat> <x> <y>", where x and y place the cat in the stage (0…1,
+    /// from the top left).
+    func event(_ name: String, cat: Cat?) {
+        var x = 0.5, y = 0.5
+        if let cat, let stage = world?.demoStage {
+            x = Double((cat.x - stage.minX) / stage.width)
+            y = Double(1 - (cat.y + cat.catHeight / 2 - stage.minY) / stage.height)
+        }
+        let catName = (cat?.config.name ?? "-").replacingOccurrences(of: " ", with: "_")
+        let seconds = CACurrentMediaTime() - startTime
+        print(String(format: "EVENT %@ %.2f %@ %.3f %.3f", name, seconds, catName, x, y))
+        fflush(stdout)
+    }
+
     private var cursorTimer: Timer?
 
     // Room scenes share one stage in the bottom-left corner of the screen.
@@ -79,6 +99,11 @@ final class DemoDirector {
         case .play:
             cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
                     CatConfig(name: L("Midnight"), coat: .tuxedo, personality: .playful)]
+        case .trailer:
+            cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
+                    CatConfig(name: L("Marshmallow"), coat: .siamese, personality: .lazy)]
+            cats[1].brain = { var b = CatBrain.preset(.lazy); b.places = [.box: 50, .bed: 0, .friends: 0]; b.routines = []; return b }()
+            // Placed in `start`, once the notch position is known.
         case .naps:
             // Each cat has one firm favourite spot.
             let spots: [(CoatPreset, CatPlace, FurnitureKind, CGFloat)] = [
@@ -102,8 +127,18 @@ final class DemoDirector {
 
     func start(in world: CatWorld) {
         self.world = world
+        Self.current = self
+        startTime = CACurrentMediaTime()
         let stage: CGRect
-        if scene == .notch, let notch = world.geo.notch {
+        if scene == .trailer, let notch = world.geo.notch {
+            // 480×270 points: 960×540 on a Retina screen, scaled up exactly 2× to 1920×1080 for the trailer.
+            let mid = (notch.lowerBound + notch.upperBound) / 2
+            stage = CGRect(x: (mid - 240).rounded(), y: world.geo.height - 270, width: 480, height: 270)
+            world.setDemoStage(stage, floor: Self.floor, notch: CGRect(x: notch.lowerBound, y: world.geo.menuBarY,
+                                                                       width: notch.upperBound - notch.lowerBound, height: world.geo.menuBarHeight),
+                               menuBar: true)
+            setUpTrailer(in: world, notch: notch, stage: stage)
+        } else if scene == .notch, let notch = world.geo.notch {
             stage = CGRect(x: notch.lowerBound - 200, y: world.geo.menuBarY - 4,
                            width: notch.upperBound - notch.lowerBound + 400, height: world.geo.menuBarHeight + 4)
             world.setDemoStage(stage, floor: 0, notch: CGRect(x: notch.lowerBound, y: world.geo.menuBarY,
@@ -127,7 +162,47 @@ final class DemoDirector {
 
         // Put the cats where the scene needs them while they're still dropping in.
         for (cat, x) in zip(world.cats, startPositions) { cat.demoPlace(x: x) }
-        script()
+        if scene == .trailer, let sleeper = world.cats.last, let stage = world.demoStage {
+            // The sleepy one starts on the floor, next to its box.
+            sleeper.demoPlace(x: stage.minX + 130, y: stage.minY + Self.floor + 4)
+        }
+        if scene == .trailer, CommandLine.arguments.contains("--wait-go") {
+            waitForGo()
+        } else {
+            script()
+        }
+    }
+
+    /// The trailer script starts the story once recording is running, by creating this file.
+    static let goFile = "/tmp/catification-trailer-go"
+
+    private func waitForGo() {
+        Timer.scheduledTimer(withTimeInterval: 0.02, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard FileManager.default.fileExists(atPath: Self.goFile) else { return }
+                timer.invalidate()
+                guard let self, let world = self.world else { return }
+                world.tickDemoClock()
+                self.startTime = CACurrentMediaTime()
+                self.event("go", cat: nil)
+                self.script()
+            }
+        }
+    }
+
+    private func setUpTrailer(in world: CatWorld, notch: ClosedRange<CGFloat>, stage: CGRect) {
+        let menuBar = world.geo.menuBarY
+        let ground = stage.minY + Self.floor
+        world.store.furniture = [
+            // A low shelf on the right, and a higher one to its left, under the notch.
+            // The drop to the low shelf stays small enough not to need maths; the jump up to the
+            // high one is big enough to calculate, and to miss.
+            Furniture(id: shelfA, kind: .shelf, x: Double(stage.maxX - 120), y: Double(menuBar - 120), width: 110),
+            Furniture(id: shelfB, kind: .shelf, x: Double(stage.maxX - 255), y: Double(menuBar - 45), width: 90),
+            Furniture(id: trash, kind: .box, x: Double(stage.minX + 80), y: Double(ground)),
+        ]
+        // Pick up the furniture now rather than on the next turn of the run loop.
+        world.reloadFurnitureForDemo()
     }
 
     private var startPositions: [CGFloat] {
@@ -141,6 +216,9 @@ final class DemoDirector {
         case .pet: return [r.midX]
         case .play: return [r.minX + 150, r.minX + 240]
         case .naps: return [r.minX + 90, r.minX + 170, r.minX + 250, r.minX + 330, r.minX + 340]
+        case .trailer:
+            guard let stage = world?.demoStage else { return [] }
+            return [stage.minX + 40, stage.minX + 130]
         }
     }
 
@@ -211,6 +289,30 @@ final class DemoDirector {
             at(1.6) { world in
                 for cat in world.cats { cat.goToSleep(world) }
             }
+        case .trailer:
+            // Cat → notch → portals → a shelf → maths → a missed jump, hanging off the edge.
+            at(0.3) { world in
+                world.cats.last?.demoNoWake = true
+                world.cats.last?.goToSleep(world)
+            }
+            // Each step starts once the cat has sat down after the previous one, so timing
+            // differences between runs can't make steps overlap.
+            steps = [
+                { world in
+                    guard let cat = world.cats.first, let stage = world.demoStage else { return }
+                    cat.go(to: .menuBar, x: stage.maxX - 60, then: .sit, running: true, world: world)
+                },
+                { world in
+                    guard let cat = world.cats.first, let s = world.surface(.shelf(self.shelfA)) else { return }
+                    cat.go(to: .shelf(self.shelfA), x: s.segments[0].upperBound - 30, then: .sit, running: true, world: world)
+                },
+                { world in
+                    guard let cat = world.cats.first, let s = world.surface(.shelf(self.shelfB)) else { return }
+                    cat.demoMiss = true
+                    cat.go(to: .shelf(self.shelfB), x: s.segments[0].lowerBound + 30, then: .sit, running: true, world: world)
+                },
+            ]
+            at(1.2) { world in self.runSteps(in: world) }
         case .play:
             for t in [1.5, 6.5] {
                 at(t) { world in
@@ -218,6 +320,25 @@ final class DemoDirector {
                     let a = world.cats[0], b = world.cats[1]
                     if a.isPlayable, b.isPlayable { a.startPlay(with: b, world: world) }
                 }
+            }
+        }
+    }
+
+    private var steps: [(CatWorld) -> Void] = []
+    private var stepTimer: Timer?
+
+    /// Runs `steps` one after another, each once the hero cat is sitting (or standing) still.
+    private func runSteps(in world: CatWorld) {
+        guard !steps.isEmpty else { return }
+        steps.removeFirst()(world)
+        var settled = 0.0
+        stepTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let self, let world = self.world, let cat = world.cats.first else { return timer.invalidate() }
+                settled = cat.activity == .sit && cat.surface != nil ? settled + 0.1 : 0
+                guard settled >= 0.4 else { return }
+                timer.invalidate()
+                self.runSteps(in: world)
             }
         }
     }

@@ -88,6 +88,8 @@ final class Cat {
     private var calcSpawn = 0.0
     /// Demo recordings: miss the next big jump and fall, for the camera.
     var demoMiss = false
+    /// Demo recordings: once asleep, stay asleep.
+    var demoNoWake = false
 
     // Places and toys.
     private(set) var bedID: UUID?
@@ -202,8 +204,9 @@ final class Cat {
     }
 
     /// Demo recordings: drop the cat in at a chosen spot.
-    func demoPlace(x newX: CGFloat) {
+    func demoPlace(x newX: CGFloat, y newY: CGFloat? = nil) {
         x = newX
+        if let newY { y = newY }
     }
 
     /// The world changed shape (mode or screen): start over.
@@ -306,7 +309,7 @@ final class Cat {
                 if huntKind != nil { begin(.hunting) } else { decide(world) }
             }
         case .sleep:
-            if activityTime >= activityDuration || (energy >= 1 && activityTime > 12) {
+            if !demoNoWake, activityTime >= activityDuration || (energy >= 1 && activityTime > 12) {
                 wakeUp()
                 react(to: .wokeUp, world: world)
             }
@@ -815,6 +818,7 @@ final class Cat {
             if big, !routeHurried, world.store.jumpMath {
                 let thinking = 1.2 + .random(in: 0...0.9) + min(Double(abs(dy)) / 500, 0.8)
                 begin(.calculating, for: thinking)
+                DemoDirector.current?.event("calculate", cat: self)
                 calcSpawn = 0
                 world.startCalculation(for: self, from: CGPoint(x: x, y: y), to: CGPoint(x: fresh.landX, y: toY))
             } else {
@@ -867,6 +871,7 @@ final class Cat {
         }
         if abs(vx) > 1 { facingRight = vx > 0 }
         begin(.jumping)
+        DemoDirector.current?.event("jump", cat: self)
     }
 
     private func resolveHang(_ world: CatWorld) {
@@ -940,7 +945,9 @@ final class Cat {
             y = hangPoint.y
             vx = 0
             vy = 0
-            begin(.hanging, for: .random(in: 0.9...1.5))
+            // In a demo, hang on for the camera.
+            begin(.hanging, for: demoMiss ? 4 : .random(in: 0.9...1.5))
+            DemoDirector.current?.event("hang", cat: self)
             showEmote(.exclaim, for: 1.2)
             return
         }
@@ -1393,6 +1400,7 @@ final class Cat {
                     x += dir * step
                     transit = Transit(entry: entry, exit: exit, dir: dir)
                     world.portalTransitBegan(at: entry)
+                    DemoDirector.current?.event("portal", cat: self)
                     return false
                 }
             }
