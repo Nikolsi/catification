@@ -108,6 +108,14 @@ final class Cat {
     private var huntSwitchTime = 0.0
     private var huntSmoothX: CGFloat?
 
+    // Character and needs.
+    var brain: CatBrain { config.effectiveBrain }
+    private(set) var social = Double.random(in: 0.3...0.6)
+    private(set) var curiosity = Double.random(in: 0.3...0.6)
+    private var pendingAction: (action: CatAction, expires: Double)?
+    private var napPlaceOverride: CatPlace?
+    private var reactionCooldowns: [UUID: Double] = [:]
+
     // Feelings.
     private(set) var energy = Double.random(in: 0.55...1)
     private(set) var happiness = 0.6
@@ -296,7 +304,10 @@ final class Cat {
                 if huntKind != nil { begin(.hunting) } else { decide(world) }
             }
         case .sleep:
-            if activityTime >= activityDuration || (energy >= 1 && activityTime > 12) { wakeUp() }
+            if activityTime >= activityDuration || (energy >= 1 && activityTime > 12) {
+                wakeUp()
+                react(to: .wokeUp, world: world)
+            }
         case .walk, .run:
             followRoute(dt, world)
         case .chase:
@@ -330,7 +341,10 @@ final class Cat {
             }
             if activityTime >= activityDuration { afterScratch(world) }
         case .eating:
-            if activityTime >= activityDuration { finishEating() }
+            if activityTime >= activityDuration {
+                finishEating()
+                react(to: .ate, world: world)
+            }
         case .hunting:
             hunt(dt, world)
         case .rummaging:
@@ -353,6 +367,21 @@ final class Cat {
         default: energy -= 0.0012 * dt
         }
         energy = min(1, max(0, energy))
+
+        let needs = brain.needs
+        switch activity {
+        case .chase, .flee, .crouch, .pounce, .greet, .petted: social -= 0.06 * dt
+        case .sleep: break
+        default: social += needs.socialRate * dt
+        }
+        switch activity {
+        case .walk, .run, .rummaging, .scratching, .hunting, .climbing, .jumping: curiosity -= 0.03 * dt
+        case .sleep: break
+        default: curiosity += needs.curiosityRate * dt
+        }
+        social = min(1, max(0, social))
+        curiosity = min(1, max(0, curiosity))
+
         if world.hasBowl, activity != .eating { hunger = min(1, hunger + dt / 700) }
         happiness += (0.55 - happiness) * 0.003 * dt
         grumpyTime = max(0, grumpyTime - dt)
@@ -434,50 +463,109 @@ final class Cat {
         routeThen = nil
         routeAttempts = 0
         guard surface != nil else { return }
-        let t = traits
-        let grumpy = grumpyTime > 0
 
+        // Basic needs come first, whatever the character.
         if energy < 0.12 {
             goToSleep(world)
             return
         }
         if hunger > 0.65, goEat(world) { return }
 
-        var options: [(Double, () -> Bool)] = [
-            (1.0, { self.begin(.stand, for: .random(in: 2...5)); return true }),
-            (1.5, { self.begin(.sit, for: .random(in: 4...10)); return true }),
-            (0.7, { self.begin(.groom, for: .random(in: 2...4.5)); return true }),
-            (1.6 * t.curiosity, { self.wander(world) }),
-            (0.45 * t.playfulness * energy * (grumpy ? 0.3 : 1), { self.zoomies(world) }),
-            ((1.1 - energy) * 2.2 * t.laziness, { self.goToSleep(world); return true }),
-        ]
-        if world.hasOtherSurfaces {
-            options.append((1.3 * t.curiosity, { self.explore(world) }))
-        }
-        if world.hasPosts {
-            options.append((0.6, { self.goScratch(world) }))
-        }
-        if world.hasTrash {
-            options.append((0.5 * t.curiosity, { self.goRummage(world) }))
-        }
-        if !grumpy, energy > 0.35, let mate = world.playmate(for: self) {
-            options.append((1.4 * t.playfulness * energy, { self.startPlay(with: mate, world: world); return true }))
-        }
-        if !grumpy, energy > 0.3, world.ballInfo != nil {
-            options.append((0.8 * t.playfulness * energy, { self.startHunting(.ball, world: world); return true }))
-        }
-        if t.affection > 1.2, world.mouseNearCats {
-            options.append((1.6, { self.comeToCursor(world) }))
+        // Something a reaction asked for earlier ("after being petted, follow the cursor").
+        if let pending = pendingAction {
+            pendingAction = nil
+            if world.now < pending.expires, perform(pending.action, world: world) { return }
         }
 
-        // Try options in weighted-random order until one works out.
-        while !options.isEmpty {
-            var r = Double.random(in: 0..<options.reduce(0) { $0 + $1.0 })
-            let index = options.firstIndex { r -= $0.0; return r < 0 } ?? 0
-            if options[index].1() { return }
-            options.remove(at: index)
+        var scores = UtilityPlanner.scores(brain: brain, context: plannerContext(world))
+        if Self.debugLog {
+            let top = scores.sorted { $0.score > $1.score }.prefix(4).map { "\($0.action.rawValue) \(String(format: "%.2f", $0.score))" }
+            FileHandle.standardError.write("    \(config.name) weighs: \(top.joined(separator: ", "))\n".data(using: .utf8)!)
+        }
+        // Try actions in weighted-random order until one works out.
+        while let action = UtilityPlanner.pick(from: scores) {
+            if perform(action, world: world) { return }
+            scores.removeAll { $0.action == action }
         }
         begin(.sit, for: 3)
+    }
+
+    private func plannerContext(_ world: CatWorld) -> PlannerContext {
+        let grumpy = grumpyTime > 0
+        var available: Set<CatAction> = [.idle, .sit, .groom, .wander, .zoomies, .nap]
+        if world.hasOtherSurfaces { available.insert(.explore) }
+        if world.hasPosts { available.insert(.scratch) }
+        if world.hasTrash { available.insert(.rummage) }
+        if !grumpy, energy > 0.35, world.playmate(for: self) != nil { available.insert(.play) }
+        if !grumpy, energy > 0.3, world.ballInfo != nil { available.insert(.chaseBall) }
+        if world.mouseNearCats { available.insert(.visitCursor) }
+        return PlannerContext(energy: energy, social: social, curiosity: curiosity, grumpy: grumpy, available: available)
+    }
+
+    /// Starts an action chosen by the planner or a reaction. False if it can't happen right now.
+    @discardableResult
+    func perform(_ action: CatAction, world: CatWorld) -> Bool {
+        switch action {
+        case .idle:
+            begin(.stand, for: .random(in: 2...5))
+        case .sit:
+            begin(.sit, for: .random(in: 4...10))
+        case .groom:
+            begin(.groom, for: .random(in: 2...4.5))
+        case .wander:
+            return wander(world)
+        case .explore:
+            return explore(world)
+        case .zoomies:
+            return zoomies(world)
+        case .nap:
+            goToSleep(world)
+        case .scratch:
+            return goScratch(world)
+        case .rummage:
+            return goRummage(world)
+        case .play:
+            guard let mate = world.playmate(for: self) else { return false }
+            startPlay(with: mate, world: world)
+        case .chaseBall:
+            guard world.ballInfo != nil else { return false }
+            startHunting(.ball, world: world)
+        case .visitCursor:
+            return comeToCursor(world)
+        }
+        return true
+    }
+
+    // MARK: - Reactions
+
+    /// Runs the brain's reactions to an event: emotes show at once, actions wait for the next decision.
+    func react(to event: CatEvent, world: CatWorld) {
+        for reaction in brain.reactions where reaction.event == event {
+            if let until = reactionCooldowns[reaction.id], world.now < until { continue }
+            guard Double.random(in: 0..<1) < reaction.chance else { continue }
+            reactionCooldowns[reaction.id] = world.now + reaction.cooldown
+            if Self.debugLog {
+                FileHandle.standardError.write("    \(config.name) reacts to \(event.rawValue): \(reaction.response.rawValue)\n".data(using: .utf8)!)
+            }
+            switch reaction.response {
+            case .hearts:
+                world.spawnHearts(from: self, count: 3, burst: true)
+            case .anger:
+                showEmote(.anger, for: 1.8)
+            case .question:
+                showEmote(.question, for: 1.5)
+            case .sulk:
+                showEmote(.anger, for: 1.5)
+                grumpyTime = max(grumpyTime, 8)
+                pendingAction = (.wander, world.now + 20)
+            case .napInBed:
+                napPlaceOverride = .bed
+                pendingAction = (.nap, world.now + 20)
+            case .followCursor, .zoomies, .groom:
+                if let action = reaction.response.action { pendingAction = (action, world.now + 20) }
+            }
+            return
+        }
     }
 
     /// Travel to a point, on this surface or another one. Returns false if there is no way there.
@@ -529,18 +617,43 @@ final class Cat {
         partner = nil
         huntKind = nil
         if !here {
-            if let bed = world.freeBed(for: self), Double.random(in: 0...1) < 0.7,
-               go(to: bed.surface, x: bed.x, then: .sleep, world: world) {
-                bedID = bed.id
-                return
+            // Favourite places compete with "right here"; routines and reactions can tip the scale.
+            let brain = self.brain
+            let hour = Calendar.current.component(.hour, from: Date())
+            var options: [(place: CatPlace?, weight: Double)] = [(nil, 1)]
+            for place in CatPlace.allCases {
+                var weight = 2.3 * brain.place(place)
+                if napPlaceOverride == place { weight *= 4 }
+                for r in brain.routines where r.action == .nap && r.place == place && r.isActive(hour: hour) { weight *= 3 }
+                if weight > 0 { options.append((place, weight)) }
             }
-            if let buddy = world.sleepingBuddy(for: self), let s = buddy.surface, Double.random(in: 0...1) < 0.7 {
-                let side: CGFloat = buddy.x > x ? -1 : 1
-                if go(to: s, x: buddy.x + side * 17 * pixel, then: .sleep, world: world) { return }
+            napPlaceOverride = nil
+            while !options.isEmpty {
+                var r = Double.random(in: 0..<options.reduce(0) { $0 + $1.weight })
+                let index = options.firstIndex { r -= $0.weight; return r < 0 } ?? 0
+                guard let place = options[index].place else { break }
+                if nap(at: place, world) { return }
+                options.remove(at: index)
             }
         }
         route = nil
         begin(.sleep, for: sleepDuration)
+    }
+
+    private func nap(at place: CatPlace, _ world: CatWorld) -> Bool {
+        switch place {
+        case .bed:
+            guard let bed = world.freeBed(for: self), go(to: bed.surface, x: bed.x, then: .sleep, world: world) else { return false }
+            bedID = bed.id
+            return true
+        case .friends:
+            guard let buddy = world.sleepingBuddy(for: self), let s = buddy.surface else { return false }
+            let side: CGFloat = buddy.x > x ? -1 : 1
+            return go(to: s, x: buddy.x + side * 17 * pixel, then: .sleep, world: world)
+        case .high:
+            guard let spot = world.highSpot(for: self) else { return false }
+            return go(to: spot.surface, x: spot.x, then: .sleep, world: world)
+        }
     }
 
     func wakeUp() {
@@ -869,10 +982,12 @@ final class Cat {
                 fellFromLedge = false
                 showEmote(.question, for: 1.2)
                 begin(.groom, for: .random(in: 2.5...4))
+                react(to: .missedJump, world: world)
                 return
             }
             if impact > 420 { showEmote(.exclaim, for: 1) }
             begin(.stand, for: .random(in: 0.8...1.6))
+            if impact > 420 { react(to: .droppedHard, world: world) }
         }
     }
 
@@ -1227,6 +1342,10 @@ final class Cat {
         guard Double.random(in: 0...1) < 0.6, other.happiness > 0.45 else { return }
         greet(facing: other.x)
         other.greet(facing: x)
+        social = max(0, social - 0.25)
+        other.social = max(0, other.social - 0.25)
+        react(to: .greeted, world: world)
+        other.react(to: .greeted, world: world)
         let a = headPoint(), b = other.headPoint()
         world.spawnHeart(at: CGPoint(x: (a.x + b.x) / 2, y: max(a.y, b.y) + 2 * pixel), pixel: max(1, pixel - 0.5))
     }
@@ -1322,6 +1441,8 @@ final class Cat {
             world.finishCalculation(for: self)
             clearPlans()
             begin(.petted)
+            social = max(0, social - 0.2)
+            react(to: .petted, world: world)
         }
         if activity == .petted, heartCooldown <= 0 {
             world.spawnHearts(from: self, count: 1, burst: false)
@@ -1368,6 +1489,7 @@ final class Cat {
             happiness = min(1, happiness + 0.04 * traits.affection)
         }
         begin(.stand, for: .random(in: 1.2...2.5))
+        react(to: .squished, world: world)
     }
 
     func pickUp(world: CatWorld) {
@@ -1377,6 +1499,7 @@ final class Cat {
         surface = nil
         squishFace = 0
         begin(.carried)
+        react(to: .pickedUp, world: world)
     }
 
     func carry(to p: CGPoint, world: CatWorld) {

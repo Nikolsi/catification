@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Cat character as data: habits, needs (company and curiosity), favourite nap spots, a daily routine and reactions to events, edited in the cat editor. The built-in personalities are presets that behave exactly as before.
+- "About this cat": describe a real cat in your own words.
+- Export and import cats as `.catprofile` files.
+
 ## 0.1.0
 
 First public release.

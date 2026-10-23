@@ -45,6 +45,7 @@ Catification is a small native macOS app (Swift, AppKit, Core Animation) that tu
 - **Furniture you arrange yourself:** shelves, a scratching post (claw sharpening included), a cat bed, a food bowl (click to fill it), and a trash can to rummage in.
 - **Toys:** a ball of yarn, a laser pointer and butterflies to hunt.
 - **Make them yours:** name, coat preset or custom colours, pattern (solid, tabby, spotted, colorpoint), eye colour, personality and size, with a live preview.
+- **Bring your own cat.** Describe a real cat and tune its character: habits (trash digging, napping, cuddles…), favourite nap spots, a daily routine and how it reacts to things. Share cats as `.catprofile` files.
 - **Pixel art made in code.** All sprites are built from ASCII-art parts and recoloured per cat, so the app ships no image assets.
 - **Localised:** English and Russian.
 
@@ -85,7 +86,8 @@ Handy flags: `Catification --settings` opens the settings window on launch, and 
 
 - **`Art/`:** sprites are assembled from ASCII parts (head, body, legs, tail) with automatic outlines; a per-cat palette recolours them. Also a tiny pixel font for the jump formulas, furniture, emotes, the app icon and the README banner.
 - **`World/CatWorld.swift`:** one transparent, click-through panel above the menu bar that runs at 60 fps. It only catches the mouse while the cursor is over a cat or a toy.
-- **`World/Cat.swift`:** the cat's state machine: decisions, routes, jumps, play, eating, rummaging and hunting.
+- **`World/Cat.swift`:** the cat's state machine: routes, jumps, play, eating, rummaging and hunting.
+- **`Brain/`:** a cat's character as data (habits, needs, favourite places, routines, reactions) and the utility planner that picks what a cat does next. No AI needed.
 - **`World/Surfaces.swift` and `World/Navigator.swift`:** everything a cat can stand on (menu bar, floor, shelves, visible window tops, desktop icons) and a Dijkstra planner over jumps between them, with real ballistics.
 - **`UI/`:** SwiftUI settings and the furniture palette.
 

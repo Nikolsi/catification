@@ -21,6 +21,7 @@ make sprites    # every animation of every coat in .preview/sprites.png
 | Area | Files |
 |---|---|
 | Cat behaviour | `Sources/Catification/World/Cat.swift` |
+| Character: habits, needs, routines, reactions, `.catprofile` | `Brain/` (`CatBrain.swift`, `UtilityPlanner.swift`) |
 | Overlay, input, furniture, toys | `World/CatWorld.swift`, `World/WorldObjects.swift`, `World/Butterfly.swift` |
 | What cats can stand on, route planning | `World/Surfaces.swift`, `World/Navigator.swift` |
 | Pixel art | `Art/CatArt.swift` (cat poses), `Art/PropArt.swift`, `Art/EmoteArt.swift`, `Art/PixelFont.swift` |

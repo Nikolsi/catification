@@ -482,6 +482,22 @@ final class CatWorld {
         return (node.id, CGFloat.random(in: (seg.lowerBound + m)...(seg.upperBound - m)))
     }
 
+    /// The highest furniture a cat can reach (shelves and perches, not the menu bar or windows).
+    func highSpot(for cat: Cat) -> (surface: SurfaceID, x: CGFloat)? {
+        guard let explored = explore(for: cat) else { return nil }
+        let furniture = explored.map.keys.filter { node in
+            switch node.id {
+            case .shelf, .perch: true
+            default: false
+            }
+        }
+        guard let best = furniture.max(by: { (surfaces[$0.id]?.y ?? 0) < (surfaces[$1.id]?.y ?? 0) }),
+              let s = surfaces[best.id], best.segment < s.segments.count else { return nil }
+        let seg = s.segments[best.segment]
+        let m = min(6 * cat.pixel, (seg.upperBound - seg.lowerBound) / 2)
+        return (best.id, CGFloat.random(in: (seg.lowerBound + m)...(seg.upperBound - m)))
+    }
+
     func randomSpot(on id: SurfaceID, near x: CGFloat, for cat: Cat) -> CGFloat {
         guard let s = surfaces[id] else { return x }
         if id == .menuBar { return clampOnSurface(.random(in: playArea.minX...playArea.maxX), id, for: cat) }
