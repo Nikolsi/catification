@@ -15,9 +15,9 @@ final class Butterfly {
     private var resting = false
     private var restTime = 0.0
     private var age = 0.0
-    private let lifetime = Double.random(in: 35...70)
+    private let lifetime = Double.random(in: 35...70, using: &Sim.rng)
     private var startled = 0.0
-    private var flap = Double.random(in: 0...1)
+    private var flap = Double.random(in: 0...1, using: &Sim.rng)
     private let sprites: (open: EmoteArt.Sprite, closed: EmoteArt.Sprite)
     private let pixel: CGFloat
     private var shownOpen: Bool?
@@ -36,14 +36,14 @@ final class Butterfly {
 
     init(world: CatWorld) {
         pixel = world.geo.furniturePixel
-        let palette = Self.palettes.randomElement()!
+        let palette = Self.palettes.randomElement(using: &Sim.rng)!
         sprites = (Self.render(open: true, palette), Self.render(open: false, palette))
-        let fromLeft = Bool.random()
+        let fromLeft = Bool.random(using: &Sim.rng)
         let region = Self.region(world)
         let area = world.playArea
         x = fromLeft ? area.minX + 10 : area.maxX - 10
-        y = CGFloat.random(in: region)
-        target = CGPoint(x: .random(in: (area.minX + 40)...(area.maxX - 40)), y: .random(in: region))
+        y = CGFloat.random(in: region, using: &Sim.rng)
+        target = CGPoint(x: .random(in: (area.minX + 40)...(area.maxX - 40), using: &Sim.rng), y: .random(in: region, using: &Sim.rng))
         layer.anchorPoint = CGPoint(x: 0.5, y: 0)
         layer.magnificationFilter = .nearest
         layer.zPosition = 16
@@ -73,7 +73,7 @@ final class Butterfly {
         startled = 0.8
         resting = false
         vy = 150
-        vx = .random(in: -90...90)
+        vx = .random(in: -90...90, using: &Sim.rng)
     }
 
     func update(dt: Double, world: CatWorld) {
@@ -98,7 +98,7 @@ final class Butterfly {
         if isLeaving {
             target = CGPoint(x: x < world.playArea.midX ? world.playArea.minX - 60 : world.playArea.maxX + 60, y: region.upperBound)
         } else if hypot(target.x - x, target.y - y) < 20 {
-            target = CGPoint(x: .random(in: (world.playArea.minX + 40)...(world.playArea.maxX - 40)), y: .random(in: region))
+            target = CGPoint(x: .random(in: (world.playArea.minX + 40)...(world.playArea.maxX - 40), using: &Sim.rng), y: .random(in: region, using: &Sim.rng))
         }
 
         var ax = (target.x - x), ay = (target.y - y)
@@ -124,11 +124,11 @@ final class Butterfly {
         if isLeaving, x < world.playArea.minX - 40 || x > world.playArea.maxX + 40 { gone = true }
 
         // Sometimes settle on whatever is just below for a breather.
-        if !isLeaving, startled == 0, catDistance > 90, Double.random(in: 0...1) < dt * 0.25,
+        if !isLeaving, startled == 0, catDistance > 90, Double.random(in: 0...1, using: &Sim.rng) < dt * 0.25,
            let spot = world.surfaceUnder(CGPoint(x: x, y: y)), let s = world.surface(spot.surface), y - s.y < 30 {
             y = s.y
             resting = true
-            restTime = .random(in: 2...5)
+            restTime = .random(in: 2...5, using: &Sim.rng)
         }
     }
 

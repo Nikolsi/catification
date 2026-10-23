@@ -66,7 +66,12 @@ final class DemoDirector {
 
     init(scene: Scene) {
         self.scene = scene
+        // Before any cat exists, so the same scene plays out the same way every time.
+        Sim.seed(Sim.commandLineSeed ?? 1, start: Self.date)
     }
+
+    /// Scenes happen on a Tuesday at 9:40, like the clock in their menu bar says.
+    private static let date = DateComponents(calendar: .current, year: 2026, month: 1, day: 13, hour: 9, minute: 40).date ?? Date()
 
     // MARK: Settings for the scene
 
@@ -217,6 +222,8 @@ final class DemoDirector {
                 timer.invalidate()
                 guard let self, let world = self.world else { return }
                 world.tickDemoClock()
+                // However long the wait was, the story itself always plays out the same way.
+                Sim.seed(Sim.commandLineSeed ?? 1, start: Self.date.addingTimeInterval(60))
                 self.startTime = CACurrentMediaTime()
                 self.event("go", cat: nil)
                 self.script()
@@ -382,12 +389,11 @@ final class DemoDirector {
         }
     }
 
+    /// Runs `action` after `seconds` of simulated time.
     private func at(_ seconds: Double, _ action: @escaping (CatWorld) -> Void) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
-            MainActor.assumeIsolated {
-                guard let world = self?.world else { return }
-                action(world)
-            }
+        world?.after(seconds) { [weak self] in
+            guard let world = self?.world else { return }
+            action(world)
         }
     }
 
@@ -502,34 +508,35 @@ final class DemoDirector {
         }
     }
 
+    /// Checks `done` every 0.1 s of simulated time until it returns true.
+    private func poll(_ done: @escaping (CatWorld) -> Bool) {
+        at(0.1) { [weak self] world in
+            if !done(world) { self?.poll(done) }
+        }
+    }
+
     /// Calls back once the hero has landed and sat down on a surface.
     private func whenLanded(on surface: SurfaceID, then action: @escaping (CatWorld) -> Void) {
-        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
-            MainActor.assumeIsolated {
-                guard let world = self?.world, let cat = world.cats.first else { return timer.invalidate() }
-                guard cat.surface == surface, cat.activity == .sit else { return }
-                timer.invalidate()
-                action(world)
-            }
+        poll { world in
+            guard let cat = world.cats.first, cat.surface == surface, cat.activity == .sit else { return false }
+            action(world)
+            return true
         }
     }
 
     private var steps: [(CatWorld) -> Void] = []
-    private var stepTimer: Timer?
 
     /// Runs `steps` one after another, each once the hero cat is sitting (or standing) still.
     private func runSteps(in world: CatWorld) {
         guard !steps.isEmpty else { return }
         steps.removeFirst()(world)
         var settled = 0.0
-        stepTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
-            MainActor.assumeIsolated {
-                guard let self, let world = self.world, let cat = world.cats.first else { return timer.invalidate() }
-                settled = cat.activity == .sit && cat.surface != nil ? settled + 0.1 : 0
-                guard settled >= 0.4 else { return }
-                timer.invalidate()
-                self.runSteps(in: world)
-            }
+        poll { [weak self] world in
+            guard let cat = world.cats.first else { return true }
+            settled = cat.activity == .sit && cat.surface != nil ? settled + 0.1 : 0
+            guard settled >= 0.4 else { return false }
+            self?.runSteps(in: world)
+            return true
         }
     }
 

@@ -25,7 +25,7 @@ final class CatWorld {
     var props: [UUID: PropBody] = [:]
     private(set) var ball: Ball?
     private(set) var butterflies: [Butterfly] = []
-    private var nextButterfly = CACurrentMediaTime() + .random(in: 6...15)
+    private var nextButterfly = Sim.time + .random(in: 6...15, using: &Sim.rng)
     private(set) var editMode = false
     private(set) var laserOn = false
     private let laserDot = CALayer()
@@ -41,7 +41,8 @@ final class CatWorld {
     // Time and input.
     private var timer: Timer?
     private var lastTime = CACurrentMediaTime()
-    private(set) var now = CACurrentMediaTime()
+    /// Simulated time (`Sim.time`): use it for everything cats do, so seeded runs repeat exactly.
+    private(set) var now = Sim.time
     private(set) var mouse: CGPoint = .zero
     private var lastMouse: CGPoint = .zero
 
@@ -237,9 +238,10 @@ final class CatWorld {
 
     @objc private func tick() {
         let t = CACurrentMediaTime()
-        let dt = min(t - lastTime, 1.0 / 20)
+        let dt = Sim.advance(realDelta: t - lastTime)
         lastTime = t
-        now = t
+        now = Sim.time
+        runDue()
         guard store.catsVisible else { return }
 
         let m = NSEvent.mouseLocation
@@ -489,10 +491,10 @@ final class CatWorld {
     func randomDestination(for cat: Cat) -> (surface: SurfaceID, x: CGFloat)? {
         guard let explored = explore(for: cat) else { return nil }
         let candidates = explored.map.keys.filter { $0 != explored.start }
-        guard let node = candidates.randomElement(), let s = surfaces[node.id], node.segment < s.segments.count else { return nil }
+        guard let node = candidates.randomElement(using: &Sim.rng), let s = surfaces[node.id], node.segment < s.segments.count else { return nil }
         let seg = s.segments[node.segment]
         let m = min(6 * cat.pixel, (seg.upperBound - seg.lowerBound) / 2)
-        return (node.id, CGFloat.random(in: (seg.lowerBound + m)...(seg.upperBound - m)))
+        return (node.id, CGFloat.random(in: (seg.lowerBound + m)...(seg.upperBound - m), using: &Sim.rng))
     }
 
     /// The highest furniture a cat can reach (shelves and perches, not the menu bar or windows).
@@ -508,14 +510,14 @@ final class CatWorld {
               let s = surfaces[best.id], best.segment < s.segments.count else { return nil }
         let seg = s.segments[best.segment]
         let m = min(6 * cat.pixel, (seg.upperBound - seg.lowerBound) / 2)
-        return (best.id, CGFloat.random(in: (seg.lowerBound + m)...(seg.upperBound - m)))
+        return (best.id, CGFloat.random(in: (seg.lowerBound + m)...(seg.upperBound - m), using: &Sim.rng))
     }
 
     /// Somewhere fitting for a cat to nap at one of its favourite kinds of place.
     func napSpot(_ place: CatPlace, for cat: Cat) -> (surface: SurfaceID, x: CGFloat)? {
         func anywhere(on id: SurfaceID) -> (surface: SurfaceID, x: CGFloat)? {
-            guard let s = surfaces[id], let seg = s.segments.randomElement() else { return nil }
-            return (id, clampOnSurface(.random(in: seg), id, for: cat))
+            guard let s = surfaces[id], let seg = s.segments.randomElement(using: &Sim.rng) else { return nil }
+            return (id, clampOnSurface(.random(in: seg, using: &Sim.rng), id, for: cat))
         }
         func beside(_ x: CGFloat, on id: SurfaceID) -> (surface: SurfaceID, x: CGFloat)? {
             let side: CGFloat = cat.x < x ? -1 : 1
@@ -523,26 +525,26 @@ final class CatWorld {
         }
         switch place {
         case .perch:
-            return furniture.filter { $0.kind == .post }.randomElement().flatMap { post in
+            return furniture.filter { $0.kind == .post }.randomElement(using: &Sim.rng).flatMap { post in
                 surfaces[.perch(post.id)] != nil ? (SurfaceID.perch(post.id), CGFloat(post.x)) : nil
             }
         case .shelf:
-            return furniture.filter { $0.kind == .shelf }.randomElement().flatMap { anywhere(on: .shelf($0.id)) }
+            return furniture.filter { $0.kind == .shelf }.randomElement(using: &Sim.rng).flatMap { anywhere(on: .shelf($0.id)) }
         case .menuBar:
             return anywhere(on: .menuBar)
         case .floor:
             return anywhere(on: .ground)
         case .windows:
-            return surfaces.keys.filter(\.isWindow).randomElement().flatMap { anywhere(on: $0) }
+            return surfaces.keys.filter(\.isWindow).randomElement(using: &Sim.rng).flatMap { anywhere(on: $0) }
         case .cursor:
             return surfaceUnder(mouse).flatMap { beside($0.x, on: $0.surface) }
         case .bowl:
             return nearestBowl(for: cat).flatMap { beside($0.x, on: $0.surface) }
         case .trash:
-            return furniture.filter { $0.kind == .trash }.compactMap { self.place($0.id, kind: .trash) }.randomElement()
+            return furniture.filter { $0.kind == .trash }.compactMap { self.place($0.id, kind: .trash) }.randomElement(using: &Sim.rng)
                 .flatMap { beside($0.x, on: $0.surface) }
         case .closedBox:
-            return furniture.filter { $0.kind == .closedBox }.randomElement().flatMap { box in
+            return furniture.filter { $0.kind == .closedBox }.randomElement(using: &Sim.rng).flatMap { box in
                 surfaces[.top(box.id)] != nil ? (SurfaceID.top(box.id), props[box.id]?.x ?? CGFloat(box.x)) : nil
             }
         case .bed, .high, .friends, .box, .laundry, .wardrobe, .flowerPot:
@@ -552,18 +554,18 @@ final class CatWorld {
 
     func randomSpot(on id: SurfaceID, near x: CGFloat, for cat: Cat) -> CGFloat {
         guard let s = surfaces[id] else { return x }
-        if id == .menuBar { return clampOnSurface(.random(in: playArea.minX...playArea.maxX), id, for: cat) }
+        if id == .menuBar { return clampOnSurface(.random(in: playArea.minX...playArea.maxX, using: &Sim.rng), id, for: cat) }
         let seg = s.segments[s.segmentIndex(containing: x, tolerance: 3) ?? s.nearestSegmentIndex(to: x) ?? 0]
-        return clampOnSurface(.random(in: seg), id, for: cat)
+        return clampOnSurface(.random(in: seg, using: &Sim.rng), id, for: cat)
     }
 
     func spawnPoint(for cat: Cat) -> CGPoint {
         if geo.mode.hasMenuBar, playArea.maxY >= geo.menuBarY {
-            let x = clampOnSurface(.random(in: playArea.minX...playArea.maxX), .menuBar, for: cat)
+            let x = clampOnSurface(.random(in: playArea.minX...playArea.maxX, using: &Sim.rng), .menuBar, for: cat)
             return CGPoint(x: x, y: min(ceiling(for: cat), geo.menuBarY + 10))
         }
         let ground = geo.groundY ?? 0
-        return CGPoint(x: clampOnSurface(.random(in: playArea.minX...playArea.maxX), .ground, for: cat), y: ground + 80)
+        return CGPoint(x: clampOnSurface(.random(in: playArea.minX...playArea.maxX, using: &Sim.rng), .ground, for: cat), y: ground + 80)
     }
 
     var mouseNearCats: Bool {
@@ -575,11 +577,11 @@ final class CatWorld {
         return cats.filter {
             $0 !== cat && $0.isPlayable && $0.energy > 0.3 && $0.surface == s
                 && sameSegment(s, cat.x, $0.x) && abs($0.x - cat.x) < 500
-        }.randomElement()
+        }.randomElement(using: &Sim.rng)
     }
 
     func sleepingBuddy(for cat: Cat) -> Cat? {
-        cats.filter { $0 !== cat && $0.isAsleep && $0.surface != nil }.randomElement()
+        cats.filter { $0 !== cat && $0.isAsleep && $0.surface != nil }.randomElement(using: &Sim.rng)
     }
 
     /// Sends every cat towards a point given in screen coordinates.
@@ -611,7 +613,7 @@ final class CatWorld {
     }
 
     func randomPost() -> PostInfo? {
-        furniture.filter { $0.kind == .post }.randomElement().flatMap { post($0.id) }
+        furniture.filter { $0.kind == .post }.randomElement(using: &Sim.rng).flatMap { post($0.id) }
     }
 
     func postID(for hop: Hop) -> UUID? {
@@ -643,7 +645,7 @@ final class CatWorld {
     func randomTrash(for cat: Cat) -> PlaceInfo? {
         furniture.filter { $0.kind == .trash && !trashOccupied($0.id, by: cat) }
             .compactMap { place($0.id, kind: .trash) }
-            .randomElement()
+            .randomElement(using: &Sim.rng)
     }
 
     func trashOccupied(_ id: UUID, by cat: Cat) -> Bool {
@@ -651,9 +653,9 @@ final class CatWorld {
     }
 
     func spawnTrashBit(at point: CGPoint) {
-        let kind: EmoteKind = Double.random(in: 0...1) < 0.25 ? .bone : .paper
-        addParticle(kind, at: point, velocity: CGVector(dx: .random(in: -70...70), dy: .random(in: 110...200)),
-                    gravity: 520, life: .random(in: 0.8...1.2), pixel: geo.furniturePixel)
+        let kind: EmoteKind = Double.random(in: 0...1, using: &Sim.rng) < 0.25 ? .bone : .paper
+        addParticle(kind, at: point, velocity: CGVector(dx: .random(in: -70...70, using: &Sim.rng), dy: .random(in: 110...200, using: &Sim.rng)),
+                    gravity: 520, life: .random(in: 0.8...1.2, using: &Sim.rng), pixel: geo.furniturePixel)
     }
     func bed(_ id: UUID) -> PlaceInfo? { place(id, kind: .bed) }
 
@@ -667,7 +669,7 @@ final class CatWorld {
         furniture.filter { $0.kind == kind }
             .compactMap { place($0.id, kind: kind) }
             .filter { spot in !cats.contains { $0 !== cat && $0.claims(bed: spot.id) } }
-            .randomElement()
+            .randomElement(using: &Sim.rng)
     }
 
     /// How high above the furniture's bottom a napping cat lies, in points.
@@ -895,7 +897,7 @@ final class CatWorld {
 
     func addFurniture(_ kind: FurnitureKind) {
         guard geo.mode.hasFurniture else { return }
-        let x = Double(geo.width / 2 + .random(in: -120...120))
+        let x = Double(geo.width / 2 + .random(in: -120...120, using: &Sim.rng))
         let y = Double(geo.height * 0.55)
         let item = Furniture.make(kind, at: x, y)
         furniture.append(item)
@@ -948,8 +950,8 @@ final class CatWorld {
 
     func spawnBall() {
         removeBall()
-        let b = Ball(x: geo.width / 2 + .random(in: -200...200), y: geo.menuBarY - 30, pixel: geo.furniturePixel)
-        b.vx = .random(in: -160...160)
+        let b = Ball(x: geo.width / 2 + .random(in: -200...200, using: &Sim.rng), y: geo.menuBarY - 30, pixel: geo.furniturePixel)
+        b.vx = .random(in: -160...160, using: &Sim.rng)
         b.vy = 120
         root.addSublayer(b.layer)
         ball = b
@@ -963,7 +965,7 @@ final class CatWorld {
     func kickBall(dir: CGFloat, power: CGFloat) {
         guard let b = ball, !b.held else { return }
         b.surface = nil
-        b.vx = dir * 200 * power + .random(in: -30...30)
+        b.vx = dir * 200 * power + .random(in: -30...30, using: &Sim.rng)
         b.vy = 130 * power
     }
 
@@ -1003,7 +1005,7 @@ final class CatWorld {
         let b = Butterfly(world: self)
         root.addSublayer(b.layer)
         butterflies.append(b)
-        nextButterfly = now + .random(in: 25...60)
+        nextButterfly = now + .random(in: 25...60, using: &Sim.rng)
     }
 
     func nearestButterfly(to p: CGPoint, within radius: CGFloat) -> Butterfly? {
@@ -1101,7 +1103,7 @@ final class CatWorld {
                 b.vx = max(-900, min(900, velocity.dx))
                 b.vy = max(-600, min(900, velocity.dy))
             } else {
-                kickBall(dir: Bool.random() ? 1 : -1, power: 0.8)
+                kickBall(dir: Bool.random(using: &Sim.rng) ? 1 : -1, power: 0.8)
             }
         case .furniture(let id, _):
             if props[id] != nil { props[id]?.held = false }
@@ -1271,6 +1273,22 @@ final class CatWorld {
 
     /// The clock in a demo menu bar ticks over when a recording's story starts: a visible
     /// sync mark for the trailer script.
+    // MARK: - Scheduling in simulated time
+
+    private var scheduled: [(at: Double, action: () -> Void)] = []
+
+    /// Runs `action` after `seconds` of simulated time: like `asyncAfter`, but repeatable in seeded runs.
+    func after(_ seconds: Double, _ action: @escaping () -> Void) {
+        scheduled.append((now + seconds, action))
+    }
+
+    private func runDue() {
+        guard scheduled.contains(where: { $0.at <= now }) else { return }
+        let due = scheduled.filter { $0.at <= now }.sorted { $0.at < $1.at }
+        scheduled.removeAll { $0.at <= now }
+        for item in due { item.action() }
+    }
+
     func tickDemoClock() {
         guard let clock = demoClock, let text = clock.string as? NSAttributedString else { return }
         clock.string = NSAttributedString(string: "Tue 9:41", attributes: text.attributes(at: 0, effectiveRange: nil))
@@ -1310,12 +1328,12 @@ final class CatWorld {
             "v=\(Int(hypot(b.vx, b.vy) / p))", String(format: "t=%.2f", b.duration), "g=9.8",
             "√2gh", "π", "∫", "Σ", "x²+y²", "sinθ", "cosθ", "v₀t", "?",
         ]
-        if Double.random(in: 0...1) < 0.04 { texts.append("∞") }
-        let sprite = PixelFont.sprite(texts.randomElement()!, color: PixelFont.colors.randomElement()!)
+        if Double.random(in: 0...1, using: &Sim.rng) < 0.04 { texts.append("∞") }
+        let sprite = PixelFont.sprite(texts.randomElement(using: &Sim.rng)!, color: PixelFont.colors.randomElement(using: &Sim.rng)!)
         let head = cat.headPoint()
         let nearTop = head.y > geo.height - 60
-        let start = CGPoint(x: head.x + .random(in: -34...34), y: head.y + (nearTop ? -.random(in: 10...30) : .random(in: 4...24)))
-        addParticle(sprite, at: start, velocity: CGVector(dx: .random(in: -6...6), dy: nearTop ? -10 : 12),
+        let start = CGPoint(x: head.x + .random(in: -34...34, using: &Sim.rng), y: head.y + (nearTop ? -.random(in: 10...30, using: &Sim.rng) : .random(in: 4...24, using: &Sim.rng)))
+        addParticle(sprite, at: start, velocity: CGVector(dx: .random(in: -6...6, using: &Sim.rng), dy: nearTop ? -10 : 12),
                     gravity: 0, life: 1.5, pixel: p * demoFormulaScale, wobble: 1.5)
     }
 
@@ -1341,21 +1359,21 @@ final class CatWorld {
         for _ in 0..<count {
             if burst {
                 // Pop up and rain down.
-                let angle = CGFloat.random(in: 0.35...(.pi - 0.35))
-                let speed = CGFloat.random(in: 90...170)
+                let angle = CGFloat.random(in: 0.35...(.pi - 0.35), using: &Sim.rng)
+                let speed = CGFloat.random(in: 90...170, using: &Sim.rng)
                 addParticle(.heart, at: head, velocity: CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed),
-                            gravity: 320, life: .random(in: 1.1...1.6), pixel: p)
+                            gravity: 320, life: .random(in: 1.1...1.6, using: &Sim.rng), pixel: p)
             } else if hasHeadroom(above: head) {
-                let start = CGPoint(x: head.x + .random(in: -4...4) * cat.pixel, y: head.y + 2 * cat.pixel)
-                addParticle(.heart, at: start, velocity: CGVector(dx: .random(in: -22...22), dy: .random(in: 18...34)),
-                            gravity: 0, life: .random(in: 0.9...1.3), pixel: p, drag: 1.2, wobble: 3)
+                let start = CGPoint(x: head.x + .random(in: -4...4, using: &Sim.rng) * cat.pixel, y: head.y + 2 * cat.pixel)
+                addParticle(.heart, at: start, velocity: CGVector(dx: .random(in: -22...22, using: &Sim.rng), dy: .random(in: 18...34, using: &Sim.rng)),
+                            gravity: 0, life: .random(in: 0.9...1.3, using: &Sim.rng), pixel: p, drag: 1.2, wobble: 3)
             } else {
                 // Up against the top of the screen (a cat on the menu bar): float out sideways
                 // and drift down instead, or the hearts would vanish off the edge at once.
-                let side: CGFloat = Bool.random() ? 1 : -1
-                let start = CGPoint(x: head.x + side * .random(in: 5...9) * cat.pixel, y: head.y - 2 * cat.pixel)
-                addParticle(.heart, at: start, velocity: CGVector(dx: side * .random(in: 25...45), dy: -.random(in: 10...25)),
-                            gravity: 15, life: .random(in: 1.1...1.5), pixel: p, drag: 0.8, wobble: 3)
+                let side: CGFloat = Bool.random(using: &Sim.rng) ? 1 : -1
+                let start = CGPoint(x: head.x + side * .random(in: 5...9, using: &Sim.rng) * cat.pixel, y: head.y - 2 * cat.pixel)
+                addParticle(.heart, at: start, velocity: CGVector(dx: side * .random(in: 25...45, using: &Sim.rng), dy: -.random(in: 10...25, using: &Sim.rng)),
+                            gravity: 15, life: .random(in: 1.1...1.5, using: &Sim.rng), pixel: p, drag: 0.8, wobble: 3)
             }
         }
     }
@@ -1381,16 +1399,16 @@ final class CatWorld {
     }
 
     func spawnFluff(at point: CGPoint) {
-        addParticle(.fluff, at: point, velocity: CGVector(dx: .random(in: -30...30), dy: .random(in: 10...50)),
-                    gravity: 200, life: .random(in: 0.4...0.7), pixel: geo.furniturePixel)
+        addParticle(.fluff, at: point, velocity: CGVector(dx: .random(in: -30...30, using: &Sim.rng), dy: .random(in: 10...50, using: &Sim.rng)),
+                    gravity: 200, life: .random(in: 0.4...0.7, using: &Sim.rng), pixel: geo.furniturePixel)
     }
 
     func sparkle(at point: CGPoint, kind: EmoteKind, count: Int) {
         for _ in 0..<count {
-            let angle = CGFloat.random(in: 0...(2 * .pi))
-            let speed = CGFloat.random(in: 25...70)
+            let angle = CGFloat.random(in: 0...(2 * .pi), using: &Sim.rng)
+            let speed = CGFloat.random(in: 25...70, using: &Sim.rng)
             addParticle(kind, at: point, velocity: CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed),
-                        gravity: 0, life: .random(in: 0.35...0.6), pixel: 1.5, drag: 2.5)
+                        gravity: 0, life: .random(in: 0.35...0.6, using: &Sim.rng), pixel: 1.5, drag: 2.5)
         }
     }
 }
