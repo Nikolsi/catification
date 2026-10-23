@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 /// `Catification --demo <scene>` stages a short scripted scene for README recordings.
 /// It uses throwaway in-memory settings, paints a backdrop over the stage so nothing else on
@@ -7,7 +8,7 @@ import AppKit
 @MainActor
 final class DemoDirector {
     enum Scene: String, CaseIterable {
-        case notch, jump, miss, trash, butterflies, pet, play, naps, trailer
+        case notch, jump, miss, trash, butterflies, pet, play, naps, trailer, windows
 
         /// How long the recording script should record, in seconds.
         var duration: Double {
@@ -21,6 +22,7 @@ final class DemoDirector {
             case .play: 11
             case .naps: 10
             case .trailer: 22
+            case .windows: 20
             }
         }
     }
@@ -99,6 +101,9 @@ final class DemoDirector {
         case .play:
             cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
                     CatConfig(name: L("Midnight"), coat: .tuxedo, personality: .playful)]
+        case .windows:
+            cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
+                    CatConfig(name: L("Marshmallow"), coat: .siamese, personality: .lazy)]
         case .trailer:
             cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
                     CatConfig(name: L("Marshmallow"), coat: .siamese, personality: .lazy)]
@@ -130,7 +135,18 @@ final class DemoDirector {
         Self.current = self
         startTime = CACurrentMediaTime()
         let stage: CGRect
-        if scene == .trailer, let notch = world.geo.notch {
+        if scene == .windows, let notch = world.geo.notch {
+            // 640×360 points at the top of the screen, around the notch: 1280×720 on Retina.
+            let mid = (notch.lowerBound + notch.upperBound) / 2
+            stage = CGRect(x: (mid - 320).rounded(), y: world.geo.height - 360, width: 640, height: 360)
+            world.store.walkOnWindows = true
+            world.demoWindows = true
+            world.demoFormulaScale = 1.5
+            world.setDemoStage(stage, floor: 0, notch: CGRect(x: notch.lowerBound, y: world.geo.menuBarY,
+                                                              width: notch.upperBound - notch.lowerBound, height: world.geo.menuBarHeight),
+                               menuBar: true, backdrop: false)
+            setUpWindows(in: world, stage: stage)
+        } else if scene == .trailer, let notch = world.geo.notch {
             // 480×270 points: 960×540 on a Retina screen, scaled up exactly 2× to 1920×1080 for the trailer.
             let mid = (notch.lowerBound + notch.upperBound) / 2
             stage = CGRect(x: (mid - 240).rounded(), y: world.geo.height - 270, width: 480, height: 270)
@@ -138,6 +154,7 @@ final class DemoDirector {
                                                                        width: notch.upperBound - notch.lowerBound, height: world.geo.menuBarHeight),
                                menuBar: true)
             setUpTrailer(in: world, notch: notch, stage: stage)
+            world.demoFormulaScale = 2
         } else if scene == .notch, let notch = world.geo.notch {
             stage = CGRect(x: notch.lowerBound - 200, y: world.geo.menuBarY - 4,
                            width: notch.upperBound - notch.lowerBound + 400, height: world.geo.menuBarHeight + 4)
@@ -166,7 +183,24 @@ final class DemoDirector {
             // The sleepy one starts on the floor, next to its box.
             sleeper.demoPlace(x: stage.minX + 130, y: stage.minY + Self.floor + 4)
         }
-        if scene == .trailer, CommandLine.arguments.contains("--wait-go") {
+        if scene == .windows, world.cats.count > 1 {
+            // The hero drops onto the terminal, a sleepy friend onto the Notes window. Again a moment
+            // later if one fell past its window before the window list caught up.
+            func drop(_ world: CatWorld) {
+                guard let terminal, let notes, let t = windowTop(terminal), let n = windowTop(notes) else { return }
+                let hero = world.cats[0], friend = world.cats[1]
+                if hero.surface != .window(terminal.windowNumber) { hero.demoPlace(x: t.x - 40, y: t.y + 12) }
+                if friend.surface != .window(notes.windowNumber) { friend.demoPlace(x: n.x + 55, y: n.y + 12) }
+            }
+            drop(world)
+            at(0.8, drop)
+            at(1.6) { world in
+                world.cats[0].begin(.sit, for: 60)
+                world.cats[1].demoNoWake = true
+                world.cats[1].goToSleep(world, here: true)
+            }
+        }
+        if scene == .trailer || scene == .windows, CommandLine.arguments.contains("--wait-go") {
             waitForGo()
         } else {
             script()
@@ -186,6 +220,131 @@ final class DemoDirector {
                 self.startTime = CACurrentMediaTime()
                 self.event("go", cat: nil)
                 self.script()
+            }
+        }
+    }
+
+    // MARK: Real windows
+
+    private var wallpaper: NSWindow?
+    private var terminal: NSWindow?
+    private var notes: NSWindow?
+
+    /// A wallpaper behind everything in the stage, and two real windows for the cats to walk on.
+    private func setUpWindows(in world: CatWorld, stage: CGRect) {
+        let frame = world.geo.frame
+        let screenStage = stage.offsetBy(dx: frame.minX, dy: frame.minY)
+
+        let wall = NSWindow(contentRect: screenStage, styleMask: .borderless, backing: .buffered, defer: false)
+        // An ordinary window, so it hides other apps' windows from the cats as well as the camera.
+        // Its top edge is above the menu bar, so nobody walks on it.
+        wall.level = .normal
+        wall.ignoresMouseEvents = true
+        wall.isReleasedWhenClosed = false
+        wall.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        let view = NSView(frame: CGRect(origin: .zero, size: screenStage.size))
+        view.wantsLayer = true
+        let gradient = CAGradientLayer()
+        gradient.frame = view.bounds
+        gradient.colors = [RGB(hex: 0x2B1E5C).nsColor.cgColor, RGB(hex: 0x6A3B8E).nsColor.cgColor, RGB(hex: 0xE9895B).nsColor.cgColor]
+        gradient.startPoint = CGPoint(x: 0, y: 1)
+        gradient.endPoint = CGPoint(x: 1, y: 0)
+        view.layer?.addSublayer(gradient)
+        wall.contentView = view
+        if #available(macOS 14, *) { NSApp.activate() } else { NSApp.activate(ignoringOtherApps: true) }
+        wall.orderFrontRegardless()
+        wallpaper = wall
+
+        func window(_ title: String, _ rect: CGRect, dark: Bool, content: some View) -> NSWindow {
+            let w = NSWindow(contentRect: rect.offsetBy(dx: frame.minX, dy: frame.minY),
+                             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+            w.title = title
+            w.isReleasedWhenClosed = false
+            w.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+            w.contentView = NSHostingView(rootView: content)
+            w.setFrame(rect.offsetBy(dx: frame.minX, dy: frame.minY), display: true)
+            w.orderFrontRegardless()
+            return w
+        }
+        terminal = window("Terminal — zsh", CGRect(x: stage.minX + 40, y: stage.minY + 16, width: 300, height: 150), dark: true,
+                          content: VStack(alignment: .leading, spacing: 5) {
+                              Text("~/catification % make run").foregroundColor(.green)
+                              Text("Built build/Catification.app").foregroundColor(.white)
+                              Text("~/catification % ▍").foregroundColor(.white)
+                          }
+                          .font(.system(size: 12, design: .monospaced))
+                          .padding(10)
+                          .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                          .background(Color(white: 0.1)))
+        notes = window("Notes", CGRect(x: stage.minX + 372, y: stage.minY + 108, width: 232, height: 140), dark: false,
+                       content: VStack(alignment: .leading, spacing: 6) {
+                           Text("Today").font(.system(size: 15, weight: .bold))
+                           Text("☑︎ pet the cats")
+                           Text("☐ feed the cats")
+                           Text("☐ ship v0.2")
+                       }
+                       .font(.system(size: 13))
+                       .foregroundColor(.black)
+                       .padding(12)
+                       .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                       .background(Color(white: 0.99)))
+    }
+
+    private var cursorWindow: NSWindow?
+    private var cursorPoint: CGPoint?
+
+    /// An arrow drawn by us. The real cursor stays parked off stage: it takes its shape from
+    /// whichever app is in front (the terminal running the recording would show a text cursor).
+    private func showCursor(at point: CGPoint) {
+        let cursor = NSCursor.arrow
+        let size = cursor.image.size
+        cursorPoint = point
+        let origin = CGPoint(x: point.x - cursor.hotSpot.x, y: point.y - size.height + cursor.hotSpot.y)
+        if let w = cursorWindow { return w.setFrameOrigin(origin) }
+        let w = NSWindow(contentRect: CGRect(origin: origin, size: size), styleMask: .borderless, backing: .buffered, defer: false)
+        w.level = .screenSaver
+        w.isOpaque = false
+        w.backgroundColor = .clear
+        w.hasShadow = false
+        w.ignoresMouseEvents = true
+        w.isReleasedWhenClosed = false
+        w.contentView = NSImageView(image: cursor.image)
+        w.orderFrontRegardless()
+        cursorWindow = w
+    }
+
+    private func windowTop(_ w: NSWindow?) -> (x: CGFloat, y: CGFloat)? {
+        guard let w, let frame = world?.geo.frame else { return nil }
+        return (w.frame.midX - frame.minX, w.frame.maxY - frame.minY)
+    }
+
+    /// Drags a window by its title bar, like a person would, with a drawn cursor that first moves
+    /// over to the title bar.
+    private func drag(_ w: NSWindow?, by delta: CGVector, over seconds: Double, then done: @escaping () -> Void) {
+        guard let w else { return }
+        let start = w.frame.origin
+        let grab = CGPoint(x: w.frame.width * 0.62, y: w.frame.height - 12)
+        let from = cursorPoint ?? CGPoint(x: w.frame.maxX + 90, y: w.frame.minY - 30)
+        let approach = 0.7
+        let began = CACurrentMediaTime()
+        func ease(_ t: Double) -> CGFloat { CGFloat(t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2) }
+        Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { timer in
+            MainActor.assumeIsolated {
+                let elapsed = CACurrentMediaTime() - began
+                if elapsed < approach {
+                    let k = ease(elapsed / approach)
+                    let to = CGPoint(x: start.x + grab.x, y: start.y + grab.y)
+                    self.showCursor(at: CGPoint(x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k))
+                    return
+                }
+                let t = min(1, (elapsed - approach) / seconds)
+                let origin = CGPoint(x: start.x + delta.dx * ease(t), y: start.y + delta.dy * ease(t))
+                w.setFrameOrigin(origin)
+                self.showCursor(at: CGPoint(x: origin.x + grab.x, y: origin.y + grab.y))
+                if t >= 1 {
+                    timer.invalidate()
+                    done()
+                }
             }
         }
     }
@@ -216,6 +375,7 @@ final class DemoDirector {
         case .pet: return [r.midX]
         case .play: return [r.minX + 150, r.minX + 240]
         case .naps: return [r.minX + 90, r.minX + 170, r.minX + 250, r.minX + 330, r.minX + 340]
+        case .windows: return []
         case .trailer:
             guard let stage = world?.demoStage else { return [] }
             return [stage.minX + 40, stage.minX + 130]
@@ -289,6 +449,24 @@ final class DemoDirector {
             at(1.6) { world in
                 for cat in world.cats { cat.goToSleep(world) }
             }
+        case .windows:
+            // Drag the terminal with the cat riding on it, then the cat jumps over to the Notes window.
+            at(2.0) { world in
+                self.event("drag", cat: world.cats.first)
+                self.drag(self.terminal, by: CGVector(dx: 70, dy: 30), over: 2.4) {
+                    self.at(0.7) { world in
+                        guard let cat = world.cats.first, let notes = self.notes, let n = self.windowTop(notes) else { return }
+                        cat.go(to: .window(notes.windowNumber), x: n.x - 40, then: .sit, running: true, world: world)
+                        self.whenLanded(on: .window(notes.windowNumber)) { world in
+                            world.cats.first?.showEmote(.heart, for: 1.6)
+                            self.at(1.4) { world in
+                                self.event("drag2", cat: world.cats.first)
+                                self.drag(self.notes, by: CGVector(dx: -40, dy: -24), over: 2.0) {}
+                            }
+                        }
+                    }
+                }
+            }
         case .trailer:
             // Cat → notch → portals → a shelf → maths → a missed jump, hanging off the edge.
             at(0.3) { world in
@@ -320,6 +498,18 @@ final class DemoDirector {
                     let a = world.cats[0], b = world.cats[1]
                     if a.isPlayable, b.isPlayable { a.startPlay(with: b, world: world) }
                 }
+            }
+        }
+    }
+
+    /// Calls back once the hero has landed and sat down on a surface.
+    private func whenLanded(on surface: SurfaceID, then action: @escaping (CatWorld) -> Void) {
+        Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] timer in
+            MainActor.assumeIsolated {
+                guard let world = self?.world, let cat = world.cats.first else { return timer.invalidate() }
+                guard cat.surface == surface, cat.activity == .sit else { return }
+                timer.invalidate()
+                action(world)
             }
         }
     }

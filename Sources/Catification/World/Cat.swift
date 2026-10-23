@@ -206,7 +206,12 @@ final class Cat {
     /// Demo recordings: drop the cat in at a chosen spot.
     func demoPlace(x newX: CGFloat, y newY: CGFloat? = nil) {
         x = newX
-        if let newY { y = newY }
+        guard let newY else { return }
+        y = newY
+        surface = nil
+        vx = 0
+        vy = 0
+        begin(.falling)
     }
 
     /// The world changed shape (mode or screen): start over.
@@ -986,6 +991,7 @@ final class Cat {
             }
         case .jumping:
             if let h = hop, h.to == s.id, var r = route {
+                DemoDirector.current?.event("landed", cat: self)
                 if r.hops.first?.to == s.id { r.hops.removeFirst() }
                 route = r
                 hop = nil
@@ -1000,6 +1006,7 @@ final class Cat {
                 fellFromLedge = false
                 showEmote(.question, for: 1.2)
                 begin(.groom, for: .random(in: 2.5...4))
+                DemoDirector.current?.event("fell", cat: self)
                 react(to: .missedJump, world: world)
                 return
             }

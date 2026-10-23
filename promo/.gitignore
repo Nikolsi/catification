@@ -1,5 +1,5 @@
 node_modules/
 out/
-public/raw.mp4
-public/timeline.json
+# Written by scripts/record-trailer.sh
+public/*/
 public/banner.gif

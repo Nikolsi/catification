@@ -74,6 +74,11 @@ final class CatWorld {
     private(set) var demoStage: CGRect?
     private var backdropLayers: [CALayer] = []
     private var demoClock: CATextLayer?
+    /// Demo recordings can make the jump formulas bigger, to stay readable in a video on a phone.
+    var demoFormulaScale: CGFloat = 1
+    /// Demo recordings with real windows: cats walk on them even inside a stage, and the
+    /// window list is read every frame so riding a dragged window looks smooth.
+    var demoWindows = false
 
     /// Where cats, toys and butterflies may go. The whole panel, unless a demo stage is set.
     var playArea: CGRect { demoStage ?? CGRect(origin: .zero, size: geo.frame.size) }
@@ -285,7 +290,7 @@ final class CatWorld {
         let tracking = (geo.mode == .screen && store.walkOnWindows) || geo.mode == .desktop || climbingIcons
         guard tracking else { return }
         let riding = cats.contains { $0.surface?.isWindow == true } || ball?.surface?.isWindow == true
-        windowTracker.update(now: now, interval: riding ? 0.08 : 0.3, panelFrame: geo.frame)
+        windowTracker.update(now: now, interval: demoWindows ? 0 : (riding ? 0.08 : 0.3), panelFrame: geo.frame)
         if climbingIcons {
             let onIcon = cats.contains { if case .icon? = $0.surface { return true } else { return false } }
             iconTracker.update(now: now, interval: onIcon ? 0.5 : 2, panelFrame: geo.frame)
@@ -330,7 +335,7 @@ final class CatWorld {
                 }
             }
         }
-        if geo.mode == .screen, store.walkOnWindows, demoStage == nil {
+        if geo.mode == .screen, store.walkOnWindows, demoStage == nil || demoWindows {
             list += windowTracker.surfaces(width: geo.width, below: geo.menuBarY, above: geo.groundY ?? 0,
                                            clearance: 16 * geo.furniturePixel)
         }
@@ -1180,19 +1185,21 @@ final class CatWorld {
 
     /// Confines the world to `stage` (panel coordinates) and paints a backdrop behind it, so a
     /// screen recording shows only the cats. `floor` raises the ground inside the stage.
-    func setDemoStage(_ stage: CGRect, floor: CGFloat, notch: CGRect?, menuBar: Bool = false) {
+    func setDemoStage(_ stage: CGRect, floor: CGFloat, notch: CGRect?, menuBar: Bool = false, backdrop: Bool = true) {
         demoStage = stage
         if geo.groundY != nil, floor > 0 { geo.groundY = stage.minY + floor }
         for l in backdropLayers { l.removeFromSuperlayer() }
         backdropLayers = []
 
-        let wall = CAGradientLayer()
-        wall.frame = stage
-        wall.colors = [RGB(hex: 0x3B3552).nsColor.cgColor, RGB(hex: 0x262433).nsColor.cgColor]
-        wall.startPoint = CGPoint(x: 0.5, y: 1)
-        wall.endPoint = CGPoint(x: 0.5, y: 0)
-        wall.zPosition = 1
-        backdropLayers.append(wall)
+        if backdrop {
+            let wall = CAGradientLayer()
+            wall.frame = stage
+            wall.colors = [RGB(hex: 0x3B3552).nsColor.cgColor, RGB(hex: 0x262433).nsColor.cgColor]
+            wall.startPoint = CGPoint(x: 0.5, y: 1)
+            wall.endPoint = CGPoint(x: 0.5, y: 0)
+            wall.zPosition = 1
+            backdropLayers.append(wall)
+        }
         if floor > 0 {
             let boards = CALayer()
             boards.frame = CGRect(x: stage.minX, y: stage.minY, width: stage.width, height: floor)
@@ -1309,7 +1316,7 @@ final class CatWorld {
         let nearTop = head.y > geo.height - 60
         let start = CGPoint(x: head.x + .random(in: -34...34), y: head.y + (nearTop ? -.random(in: 10...30) : .random(in: 4...24)))
         addParticle(sprite, at: start, velocity: CGVector(dx: .random(in: -6...6), dy: nearTop ? -10 : 12),
-                    gravity: 0, life: 1.5, pixel: p, wobble: 1.5)
+                    gravity: 0, life: 1.5, pixel: p * demoFormulaScale, wobble: 1.5)
     }
 
     // MARK: - Particles

@@ -79,10 +79,11 @@ enum Navigator {
 
         // Roughly level, or up without overlap: leap across the gap.
         let takeoff: CGFloat, land: CGFloat
-        if br.lowerBound > ar.upperBound {
+        // `>=`: a window in front of another cuts its top edge exactly where its own begins.
+        if br.lowerBound >= ar.upperBound {
             takeoff = ar.upperBound - m * 0.5
             land = br.lowerBound + m
-        } else if br.upperBound < ar.lowerBound {
+        } else if br.upperBound <= ar.lowerBound {
             takeoff = ar.lowerBound + m * 0.5
             land = br.upperBound - m
         } else {

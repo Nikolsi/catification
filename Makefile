@@ -1,4 +1,4 @@
-.PHONY: build app run dev test sprites banner demos trailer clean
+.PHONY: build app run dev test sprites banner demos trailer windows-video clean
 
 build:
 	swift build
@@ -22,6 +22,9 @@ demos:
 
 trailer:
 	./scripts/record-trailer.sh
+
+windows-video:
+	./scripts/record-trailer.sh windows
 
 banner: build
 	.build/debug/Catification --render-banner docs/media/banner.gif
