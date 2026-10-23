@@ -14,6 +14,7 @@ make sprites    # every animation of every coat in .preview/sprites.png
 
 - `CATIFICATION_DEBUG=1 make dev` prints every activity change of every cat, which helps a lot when tuning behaviour.
 - `Catification --settings` opens the settings window on launch.
+- `Catification --seed 42` makes a run repeatable: the same random numbers, fixed 1/60 s steps and a known clock. Demo scenes are always seeded, so a scene plays out the same way every time.
 - `scripts/build-app.sh --universal --version 1.2.3` is what the release workflow runs.
 
 ## Where things live

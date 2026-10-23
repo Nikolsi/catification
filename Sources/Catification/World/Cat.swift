@@ -62,7 +62,7 @@ final class Cat {
     private var vx: CGFloat = 0
     private var vy: CGFloat = 0
     private(set) var surface: SurfaceID?
-    private(set) var facingRight = Bool.random()
+    private(set) var facingRight = Bool.random(using: &Sim.rng)
 
     private(set) var activity: Activity = .stand
     private var activityTime = 0.0
@@ -112,25 +112,25 @@ final class Cat {
 
     // Character and needs.
     var brain: CatBrain { config.effectiveBrain }
-    private(set) var social = Double.random(in: 0.3...0.6)
-    private(set) var curiosity = Double.random(in: 0.3...0.6)
+    private(set) var social = Double.random(in: 0.3...0.6, using: &Sim.rng)
+    private(set) var curiosity = Double.random(in: 0.3...0.6, using: &Sim.rng)
     private var pendingAction: (action: CatAction, expires: Double)?
     private var napPlaceOverride: CatPlace?
     private var reactionCooldowns: [UUID: Double] = [:]
 
     // Feelings.
-    private(set) var energy = Double.random(in: 0.55...1)
+    private(set) var energy = Double.random(in: 0.55...1, using: &Sim.rng)
     private(set) var happiness = 0.6
-    private(set) var hunger = Double.random(in: 0...0.3)
+    private(set) var hunger = Double.random(in: 0...0.3, using: &Sim.rng)
     private var grumpyTime = 0.0
     private var recentSquish = 0.0
     private var strokeAmount: CGFloat = 0
     private var lastStroke = -100.0
     private var heartCooldown = 0.0
     private var zzzCooldown = 0.0
-    private var moodEmoteCooldown = Double.random(in: 10...25)
-    var greetCooldown = Double.random(in: 5...15)
-    private var blinkTimer = Double.random(in: 1...4)
+    private var moodEmoteCooldown = Double.random(in: 10...25, using: &Sim.rng)
+    var greetCooldown = Double.random(in: 5...15, using: &Sim.rng)
+    private var blinkTimer = Double.random(in: 1...4, using: &Sim.rng)
     private var blinking = 0.0
     private var squishFace = 0.0
     private var emote: (kind: EmoteKind, remaining: Double)?
@@ -147,7 +147,7 @@ final class Cat {
     private let clip = CALayer()
     private let ghostClip = CALayer()
     private let emoteLayer = CALayer()
-    private let baseZ = 10 + CGFloat.random(in: 0..<1)
+    private let baseZ = 10 + CGFloat.random(in: 0..<1, using: &Sim.rng)
 
     init(config: CatConfig, world: CatWorld) {
         self.config = config
@@ -286,7 +286,7 @@ final class Cat {
 
     private func walkSpeed(_ world: CatWorld) -> CGFloat { 11 * pixel * CGFloat(traits.speed * world.store.speed) }
     private func runSpeed(_ world: CatWorld) -> CGFloat { 38 * pixel * CGFloat(traits.speed * world.store.speed) }
-    private var sleepDuration: Double { Double.random(in: 18...40) * (0.6 + 0.4 * traits.laziness) }
+    private var sleepDuration: Double { Double.random(in: 18...40, using: &Sim.rng) * (0.6 + 0.4 * traits.laziness) }
 
     // MARK: - Simulation
 
@@ -307,7 +307,7 @@ final class Cat {
         case .stand, .sit, .groom:
             if activityTime >= activityDuration { decide(world) }
         case .greet:
-            if activityTime >= activityDuration { begin(.sit, for: .random(in: 2...5)) }
+            if activityTime >= activityDuration { begin(.sit, for: .random(in: 2...5, using: &Sim.rng)) }
         case .swipe:
             if let p = partner { face(p.x) }
             if activityTime >= activityDuration {
@@ -331,7 +331,7 @@ final class Cat {
             }
             if activityTime >= activityDuration + 1.5 {
                 partner = nil
-                begin(.sit, for: .random(in: 2...4))
+                begin(.sit, for: .random(in: 2...4, using: &Sim.rng))
             }
         case .crouch:
             guard let p = partner, p.isPlayable, p.surface == surface else { endPlay(); break }
@@ -346,8 +346,8 @@ final class Cat {
         case .climbing:
             climb(dt, world)
         case .scratching:
-            if Double.random(in: 0...1) < dt * 5 {
-                world.spawnFluff(at: CGPoint(x: x + .random(in: -5...5) * pixel, y: y + .random(in: 4...12) * pixel))
+            if Double.random(in: 0...1, using: &Sim.rng) < dt * 5 {
+                world.spawnFluff(at: CGPoint(x: x + .random(in: -5...5, using: &Sim.rng) * pixel, y: y + .random(in: 4...12, using: &Sim.rng) * pixel))
             }
             if activityTime >= activityDuration { afterScratch(world) }
         case .eating:
@@ -361,7 +361,7 @@ final class Cat {
             rummage(dt, world)
         case .petted:
             if world.now - lastStroke > 1.4 {
-                begin(.sit, for: .random(in: 3...6))
+                begin(.sit, for: .random(in: 3...6, using: &Sim.rng))
                 showEmote(.heart, for: 1.5)
             }
         case .carried:
@@ -402,7 +402,7 @@ final class Cat {
         blinkTimer -= dt
         if blinkTimer <= 0 {
             blinking = 0.16
-            blinkTimer = .random(in: 2.5...6)
+            blinkTimer = .random(in: 2.5...6, using: &Sim.rng)
         }
         blinking = max(0, blinking - dt)
         squishFace = max(0, squishFace - dt)
@@ -424,7 +424,7 @@ final class Cat {
 
         moodEmoteCooldown -= dt
         if moodEmoteCooldown <= 0 {
-            moodEmoteCooldown = .random(in: 18...40)
+            moodEmoteCooldown = .random(in: 18...40, using: &Sim.rng)
             if world.store.moodEmotes, emote == nil, canInteract, let kind = mood.emote {
                 showEmote(kind, for: 1.8)
             }
@@ -432,13 +432,13 @@ final class Cat {
 
         // Toys catch the eye even mid-stroll.
         if huntKind == nil, isIdle, grumpyTime <= 0, energy > 0.15 {
-            if world.laserOn, Double.random(in: 0...1) < dt * 0.6 * traits.playfulness {
+            if world.laserOn, Double.random(in: 0...1, using: &Sim.rng) < dt * 0.6 * traits.playfulness {
                 startHunting(.laser, world: world)
             } else if let ball = world.ballInfo, ball.speed > 40, abs(ball.point.x - x) < 420,
-                      Double.random(in: 0...1) < dt * 0.5 * traits.playfulness {
+                      Double.random(in: 0...1, using: &Sim.rng) < dt * 0.5 * traits.playfulness {
                 startHunting(.ball, world: world)
             } else if let b = world.nearestButterfly(to: headPoint(), within: 320), !b.isLeaving,
-                      Double.random(in: 0...1) < dt * 0.7 * traits.playfulness {
+                      Double.random(in: 0...1, using: &Sim.rng) < dt * 0.7 * traits.playfulness {
                 startHunting(.butterfly, target: b.id, world: world)
             }
         }
@@ -448,7 +448,7 @@ final class Cat {
 
     func begin(_ a: Activity, for duration: Double = 0) {
         if Self.debugLog, a != activity {
-            let t = String(format: "%.2f", CACurrentMediaTime().truncatingRemainder(dividingBy: 10000))
+            let t = String(format: "%.2f", Sim.time)
             FileHandle.standardError.write("\(t) \(config.name): \(a) on \(surface.map { "\($0)" } ?? "-") x=\(Int(x)) y=\(Int(y))\n".data(using: .utf8)!)
         }
         if a != .sleep { bedID = nil }
@@ -493,7 +493,7 @@ final class Cat {
             FileHandle.standardError.write("    \(config.name) weighs: \(top.joined(separator: ", "))\n".data(using: .utf8)!)
         }
         // Try actions in weighted-random order until one works out.
-        while let action = UtilityPlanner.pick(from: scores) {
+        while let action = UtilityPlanner.pick(from: scores, random: .random(in: 0..<1, using: &Sim.rng)) {
             if perform(action, world: world) { return }
             scores.removeAll { $0.action == action }
         }
@@ -509,7 +509,7 @@ final class Cat {
         if !grumpy, energy > 0.35, world.playmate(for: self) != nil { available.insert(.play) }
         if !grumpy, energy > 0.3, world.ballInfo != nil { available.insert(.chaseBall) }
         if world.mouseNearCats { available.insert(.visitCursor) }
-        return PlannerContext(energy: energy, social: social, curiosity: curiosity, grumpy: grumpy, available: available)
+        return PlannerContext(energy: energy, social: social, curiosity: curiosity, grumpy: grumpy, hour: Sim.hour, available: available)
     }
 
     /// Starts an action chosen by the planner or a reaction. False if it can't happen right now.
@@ -517,11 +517,11 @@ final class Cat {
     func perform(_ action: CatAction, world: CatWorld) -> Bool {
         switch action {
         case .idle:
-            begin(.stand, for: .random(in: 2...5))
+            begin(.stand, for: .random(in: 2...5, using: &Sim.rng))
         case .sit:
-            begin(.sit, for: .random(in: 4...10))
+            begin(.sit, for: .random(in: 4...10, using: &Sim.rng))
         case .groom:
-            begin(.groom, for: .random(in: 2...4.5))
+            begin(.groom, for: .random(in: 2...4.5, using: &Sim.rng))
         case .wander:
             return wander(world)
         case .explore:
@@ -552,7 +552,7 @@ final class Cat {
     func react(to event: CatEvent, world: CatWorld) {
         for reaction in brain.reactions where reaction.event == event {
             if let until = reactionCooldowns[reaction.id], world.now < until { continue }
-            guard Double.random(in: 0..<1) < reaction.chance else { continue }
+            guard Double.random(in: 0..<1, using: &Sim.rng) < reaction.chance else { continue }
             reactionCooldowns[reaction.id] = world.now + reaction.cooldown
             if Self.debugLog {
                 FileHandle.standardError.write("    \(config.name) reacts to \(event.rawValue): \(reaction.response.rawValue)\n".data(using: .utf8)!)
@@ -617,9 +617,9 @@ final class Cat {
 
     private func zoomies(_ world: CatWorld) -> Bool {
         guard let s = surface else { return false }
-        let dir: CGFloat = Bool.random() ? 1 : -1
-        if Bool.random() { showEmote(.note, for: 1) }
-        return go(to: s, x: x + dir * .random(in: 200...520), running: true, world: world)
+        let dir: CGFloat = Bool.random(using: &Sim.rng) ? 1 : -1
+        if Bool.random(using: &Sim.rng) { showEmote(.note, for: 1) }
+        return go(to: s, x: x + dir * .random(in: 200...520, using: &Sim.rng), running: true, world: world)
     }
 
     func goToSleep(_ world: CatWorld, here: Bool = false) {
@@ -629,7 +629,7 @@ final class Cat {
         if !here {
             // Favourite places compete with "right here"; routines and reactions can tip the scale.
             let brain = self.brain
-            let hour = Calendar.current.component(.hour, from: Date())
+            let hour = Sim.hour
             var options: [(place: CatPlace?, weight: Double)] = [(nil, 1)]
             for place in CatPlace.allCases {
                 var weight = 2.3 * brain.place(place)
@@ -639,7 +639,7 @@ final class Cat {
             }
             napPlaceOverride = nil
             while !options.isEmpty {
-                var r = Double.random(in: 0..<options.reduce(0) { $0 + $1.weight })
+                var r = Double.random(in: 0..<options.reduce(0) { $0 + $1.weight }, using: &Sim.rng)
                 let index = options.firstIndex { r -= $0.weight; return r < 0 } ?? 0
                 guard let place = options[index].place else { break }
                 if nap(at: place, world) { return }
@@ -676,7 +676,7 @@ final class Cat {
 
     func wakeUp() {
         guard activity == .sleep else { return }
-        begin(.stand, for: .random(in: 1...2))
+        begin(.stand, for: .random(in: 1...2, using: &Sim.rng))
     }
 
     private func comeToCursor(_ world: CatWorld) -> Bool {
@@ -697,7 +697,7 @@ final class Cat {
         partner = nil
         huntKind = nil
         let dest: SurfaceID = world.geo.mode.hasMenuBar ? .menuBar : .ground
-        if !go(to: dest, x: tx + .random(in: -40...40), then: .sit, running: true, world: world) {
+        if !go(to: dest, x: tx + .random(in: -40...40, using: &Sim.rng), then: .sit, running: true, world: world) {
             showEmote(.question, for: 1.5)
         }
     }
@@ -747,7 +747,7 @@ final class Cat {
             routeThen = nil
             if surface != nil {
                 showEmote(.question, for: 1.2)
-                begin(.sit, for: .random(in: 1.5...3))
+                begin(.sit, for: .random(in: 1.5...3, using: &Sim.rng))
             }
             return
         }
@@ -762,7 +762,7 @@ final class Cat {
             if let id = bedID, let spot = world.napFurniture(id), spot.info.surface == surface, abs(spot.info.x - x) < 8 * pixel {
                 x = spot.info.x
                 napLift = world.napLift(spot.kind)
-                facingRight = Bool.random()
+                facingRight = Bool.random(using: &Sim.rng)
                 activity = .sleep
                 activityTime = 0
                 activityDuration = sleepDuration
@@ -778,10 +778,10 @@ final class Cat {
                 approachTries += 1
                 approach(p, world: world)
             } else {
-                begin(.crouch, for: .random(in: 0.7...1.4))
+                begin(.crouch, for: .random(in: 0.7...1.4, using: &Sim.rng))
             }
         case .sit:
-            begin(.sit, for: .random(in: 4...9))
+            begin(.sit, for: .random(in: 4...9, using: &Sim.rng))
         case .eating:
             startEating(world)
         case .scratching:
@@ -821,7 +821,7 @@ final class Cat {
             let dy = toY - y, dx = abs(fresh.landX - x)
             let big = dy > 2.2 * catHeight || dx > 5 * halfWidth * 2 || dy < -7 * catHeight
             if big, !routeHurried, world.store.jumpMath {
-                let thinking = 1.2 + .random(in: 0...0.9) + min(Double(abs(dy)) / 500, 0.8)
+                let thinking = 1.2 + .random(in: 0...0.9, using: &Sim.rng) + min(Double(abs(dy)) / 500, 0.8)
                 begin(.calculating, for: thinking)
                 DemoDirector.current?.event("calculate", cat: self)
                 calcSpawn = 0
@@ -842,7 +842,7 @@ final class Cat {
         face(h.landX)
         calcSpawn -= dt
         if calcSpawn <= 0 {
-            calcSpawn = .random(in: 0.16...0.28)
+            calcSpawn = .random(in: 0.16...0.28, using: &Sim.rng)
             world.spawnFormula(near: self, hop: h)
         }
         world.updateCalculation(for: self, progress: activityTime / activityDuration)
@@ -862,7 +862,7 @@ final class Cat {
         surface = nil
         failJump = false
 
-        if toY - y > 3 * catHeight, !routeHurried, demoMiss || Double.random(in: 0...1) < 0.12 {
+        if toY - y > 3 * catHeight, !routeHurried, demoMiss || Double.random(in: 0...1, using: &Sim.rng) < 0.12 {
             // Miscalculated: only just reach the edge and hang on it by the front paws.
             failJump = true
             hangPoint = CGPoint(x: h.landX, y: toY - CGFloat(CatArt.H - 1) * pixel)
@@ -885,7 +885,7 @@ final class Cat {
             begin(.falling)
             return
         }
-        let scrambleUp = !demoMiss && Double.random(in: 0...1) < 0.5
+        let scrambleUp = !demoMiss && Double.random(in: 0...1, using: &Sim.rng) < 0.5
         demoMiss = false
         if scrambleUp, let s = world.surface(h.to), s.segmentIndex(containing: hangPoint.x, tolerance: 2) != nil {
             // Scrambles up after all.
@@ -951,7 +951,7 @@ final class Cat {
             vx = 0
             vy = 0
             // In a demo, hang on for the camera.
-            begin(.hanging, for: demoMiss ? 4 : .random(in: 0.9...1.5))
+            begin(.hanging, for: demoMiss ? 4 : .random(in: 0.9...1.5, using: &Sim.rng))
             DemoDirector.current?.event("hang", cat: self)
             showEmote(.exclaim, for: 1.2)
             return
@@ -983,7 +983,7 @@ final class Cat {
             if huntKind != nil {
                 begin(.hunting)
             } else if let p = partner, p.isPlayable, p.surface == surface, abs(p.x - x) < 34 * pixel {
-                let d = Double.random(in: 2.5...5)
+                let d = Double.random(in: 2.5...5, using: &Sim.rng)
                 p.startFlee(from: self, duration: d, world: world)
                 begin(.chase, for: d)
             } else {
@@ -1005,13 +1005,13 @@ final class Cat {
                 // "I meant to do that."
                 fellFromLedge = false
                 showEmote(.question, for: 1.2)
-                begin(.groom, for: .random(in: 2.5...4))
+                begin(.groom, for: .random(in: 2.5...4, using: &Sim.rng))
                 DemoDirector.current?.event("fell", cat: self)
                 react(to: .missedJump, world: world)
                 return
             }
             if impact > 420 { showEmote(.exclaim, for: 1) }
-            begin(.stand, for: .random(in: 0.8...1.6))
+            begin(.stand, for: .random(in: 0.8...1.6, using: &Sim.rng))
             if impact > 420 { react(to: .droppedHard, world: world) }
         }
     }
@@ -1063,13 +1063,13 @@ final class Cat {
             return
         }
         x = post.x
-        begin(.scratching, for: .random(in: 2...4))
+        begin(.scratching, for: .random(in: 2...4, using: &Sim.rng))
     }
 
     private func afterScratch(_ world: CatWorld) {
         defer { scratchPost = nil }
         happiness = min(1, happiness + 0.05)
-        if let id = scratchPost, let post = world.post(id), Double.random(in: 0...1) < 0.55,
+        if let id = scratchPost, let post = world.post(id), Double.random(in: 0...1, using: &Sim.rng) < 0.55,
            go(to: post.perch, x: post.x, then: .sit, world: world) {
             return
         }
@@ -1093,12 +1093,12 @@ final class Cat {
         }
         face(bowl.x)
         if world.takeFood(from: id) {
-            begin(.eating, for: .random(in: 4...7))
+            begin(.eating, for: .random(in: 4...7, using: &Sim.rng))
         } else {
             // Empty bowl: sit next to it and complain.
             bowlID = nil
             showEmote(.fish, for: 2.5)
-            begin(.sit, for: .random(in: 4...7))
+            begin(.sit, for: .random(in: 4...7, using: &Sim.rng))
         }
     }
 
@@ -1107,7 +1107,7 @@ final class Cat {
         happiness = min(1, happiness + 0.1)
         bowlID = nil
         showEmote(.heart, for: 1.2)
-        begin(.groom, for: .random(in: 2...4))
+        begin(.groom, for: .random(in: 2...4, using: &Sim.rng))
     }
 
     // MARK: - Hunting toys
@@ -1121,7 +1121,7 @@ final class Cat {
         route = nil
         routeThen = nil
         huntKind = kind
-        huntUntil = world.now + .random(in: 15...35)
+        huntUntil = world.now + .random(in: 15...35, using: &Sim.rng)
         huntRetarget = 0
         showEmote(.exclaim, for: 0.6)
         begin(.hunting)
@@ -1131,7 +1131,7 @@ final class Cat {
         huntKind = nil
         huntMoving = false
         if confused { showEmote(.question, for: 1.5) }
-        begin(.sit, for: .random(in: 2...4))
+        begin(.sit, for: .random(in: 2...4, using: &Sim.rng))
     }
 
     private func hunt(_ dt: Double, _ world: CatWorld) {
@@ -1170,12 +1170,12 @@ final class Cat {
                 guard abs(dx) < 10 * pixel else { return }
                 switch kind {
                 case .ball where abs(height) < 12 * pixel:
-                    world.kickBall(dir: facingSign, power: .random(in: 0.6...1.2))
+                    world.kickBall(dir: facingSign, power: .random(in: 0.6...1.2, using: &Sim.rng))
                     begin(.swipe, for: 0.45)
                 case .laser where abs(height) < 12 * pixel:
-                    if Double.random(in: 0...1) < dt * 2.5 { pounce(at: tx, world: world) }
+                    if Double.random(in: 0...1, using: &Sim.rng) < dt * 2.5 { pounce(at: tx, world: world) }
                 case .butterfly where height < leapReach:
-                    if Double.random(in: 0...1) < dt * 2 {
+                    if Double.random(in: 0...1, using: &Sim.rng) < dt * 2 {
                         world.startleButterflies(near: target.point)
                         pounce(at: tx, height: height + 6 * pixel, world: world)
                     }
@@ -1216,9 +1216,9 @@ final class Cat {
             return
         }
         rummageFrom = CGPoint(x: x, y: y)
-        rummageExitSide = Bool.random() ? 1 : -1
-        rummageSeed = .random(in: 0...6)
-        begin(.rummaging, for: .random(in: 5...9))
+        rummageExitSide = Bool.random(using: &Sim.rng) ? 1 : -1
+        rummageSeed = .random(in: 0...6, using: &Sim.rng)
+        begin(.rummaging, for: .random(in: 5...9, using: &Sim.rng))
     }
 
     private static let hopTime = 0.35
@@ -1259,8 +1259,8 @@ final class Cat {
             if rummageHidden {
                 trashBitCooldown -= dt
                 if trashBitCooldown <= 0 {
-                    trashBitCooldown = .random(in: 0.15...0.35)
-                    world.spawnTrashBit(at: CGPoint(x: can.x + .random(in: -4...4) * pixel, y: rim + pixel))
+                    trashBitCooldown = .random(in: 0.15...0.35, using: &Sim.rng)
+                    world.spawnTrashBit(at: CGPoint(x: can.x + .random(in: -4...4, using: &Sim.rng) * pixel, y: rim + pixel))
                 }
             }
         default:
@@ -1276,8 +1276,8 @@ final class Cat {
                 y = can.y
                 trashID = nil
                 happiness = min(1, happiness + 0.06)
-                showEmote(Bool.random() ? .fish : .heart, for: 1.2)
-                begin(.stand, for: .random(in: 1...2))
+                showEmote(Bool.random(using: &Sim.rng) ? .fish : .heart, for: 1.2)
+                begin(.stand, for: .random(in: 1...2, using: &Sim.rng))
             }
         }
     }
@@ -1289,7 +1289,7 @@ final class Cat {
         approachTries = 0
         showEmote(.note, for: 1)
         if abs(mate.x - x) < 26 * pixel {
-            begin(.crouch, for: .random(in: 0.7...1.4))
+            begin(.crouch, for: .random(in: 0.7...1.4, using: &Sim.rng))
         } else {
             approach(mate, world: world)
         }
@@ -1313,11 +1313,11 @@ final class Cat {
 
     private func fleeTarget(_ world: CatWorld) -> CGFloat {
         guard let s = surface else { return x }
-        var dir: CGFloat = (partner.map { $0.x < x } ?? Bool.random()) ? 1 : -1
-        var candidate = world.clampOnSurface(x + dir * .random(in: 45...120) * pixel, s, for: self)
+        var dir: CGFloat = (partner.map { $0.x < x } ?? Bool.random(using: &Sim.rng)) ? 1 : -1
+        var candidate = world.clampOnSurface(x + dir * .random(in: 45...120, using: &Sim.rng) * pixel, s, for: self)
         if abs(candidate - x) < 20 * pixel {
             dir = -dir
-            candidate = world.clampOnSurface(x + dir * .random(in: 45...120) * pixel, s, for: self)
+            candidate = world.clampOnSurface(x + dir * .random(in: 45...120, using: &Sim.rng) * pixel, s, for: self)
         }
         return candidate
     }
@@ -1327,9 +1327,9 @@ final class Cat {
             endPlay()
             return
         }
-        if p.activity == .flee, energy > 0.3, p.energy > 0.3, Double.random(in: 0...1) < 0.35 {
+        if p.activity == .flee, energy > 0.3, p.energy > 0.3, Double.random(in: 0...1, using: &Sim.rng) < 0.35 {
             // Swap roles: now the other one chases.
-            let d = Double.random(in: 2...4)
+            let d = Double.random(in: 2...4, using: &Sim.rng)
             p.partner = self
             p.begin(.chase, for: d)
             startFlee(from: p, duration: d, world: world)
@@ -1343,10 +1343,10 @@ final class Cat {
     func relaxAfterPlay() {
         partner = nil
         happiness = min(1, happiness + 0.08)
-        if Bool.random() {
-            begin(.groom, for: .random(in: 2...4))
+        if Bool.random(using: &Sim.rng) {
+            begin(.groom, for: .random(in: 2...4, using: &Sim.rng))
         } else {
-            begin(.sit, for: .random(in: 3...6))
+            begin(.sit, for: .random(in: 3...6, using: &Sim.rng))
         }
     }
 
@@ -1354,7 +1354,7 @@ final class Cat {
         partner = nil
         route = nil
         routeThen = nil
-        begin(.stand, for: .random(in: 1...2.5))
+        begin(.stand, for: .random(in: 1...2.5, using: &Sim.rng))
     }
 
     private func checkGreeting(_ world: CatWorld) {
@@ -1364,7 +1364,7 @@ final class Cat {
         }) else { return }
         greetCooldown = 25
         other.greetCooldown = 25
-        guard Double.random(in: 0...1) < 0.6, other.happiness > 0.45 else { return }
+        guard Double.random(in: 0...1, using: &Sim.rng) < 0.6, other.happiness > 0.45 else { return }
         greet(facing: other.x)
         other.greet(facing: x)
         social = max(0, social - 0.25)
@@ -1504,17 +1504,17 @@ final class Cat {
             happiness = max(0, happiness - 0.2)
             showEmote(.anger, for: 2)
             let away: CGFloat = world.mouse.x < x ? 1 : -1
-            walk(to: x + away * .random(in: 160...320), then: .sit, running: true, world: world)
+            walk(to: x + away * .random(in: 160...320, using: &Sim.rng), then: .sit, running: true, world: world)
             return
         }
         if wasAsleep {
             showEmote(.exclaim, for: 1.2)
             happiness = max(0, happiness - 0.05)
         } else {
-            world.spawnHearts(from: self, count: .random(in: 3...5), burst: true)
+            world.spawnHearts(from: self, count: .random(in: 3...5, using: &Sim.rng), burst: true)
             happiness = min(1, happiness + 0.04 * traits.affection)
         }
-        begin(.stand, for: .random(in: 1.2...2.5))
+        begin(.stand, for: .random(in: 1.2...2.5, using: &Sim.rng))
         react(to: .squished, world: world)
     }
 

@@ -1,6 +1,7 @@
 import QuartzCore
 
 /// Hearts, Z's and portal sparks.
+@MainActor
 final class Particle {
     let layer = CALayer()
     private var position: CGPoint
@@ -10,7 +11,7 @@ final class Particle {
     private let wobble: CGFloat
     private let maxLife: Double
     private var life = 0.0
-    private let phase = Double.random(in: 0...(2 * .pi))
+    private let phase = Double.random(in: 0...(2 * .pi), using: &Sim.rng)
 
     init(sprite: EmoteArt.Sprite, pixel: CGFloat, position: CGPoint, velocity: CGVector,
          gravity: CGFloat, life: Double, drag: CGFloat = 0, wobble: CGFloat = 0) {
