@@ -82,8 +82,8 @@ final class DemoDirector {
         case .naps:
             // Each cat has one firm favourite spot.
             let spots: [(CoatPreset, CatPlace, FurnitureKind, CGFloat)] = [
-                (.ginger, .box, .box, 55), (.calico, .laundry, .laundry, 155),
-                (.gray, .flowerPot, .flowerPot, 255), (.tuxedo, .wardrobe, .wardrobe, 370),
+                (.ginger, .box, .box, 50), (.siamese, .closedBox, .closedBox, 130), (.calico, .laundry, .laundry, 215),
+                (.gray, .flowerPot, .flowerPot, 300), (.tuxedo, .wardrobe, .wardrobe, 385),
             ]
             for (coat, place, kind, x) in spots {
                 var cat = CatConfig(name: coat.title, coat: coat, personality: .lazy)
@@ -140,7 +140,7 @@ final class DemoDirector {
         case .butterflies: return [r.minX + 110, r.minX + 320]
         case .pet: return [r.midX]
         case .play: return [r.minX + 150, r.minX + 240]
-        case .naps: return [r.minX + 110, r.minX + 210, r.minX + 300, r.minX + 320]
+        case .naps: return [r.minX + 90, r.minX + 170, r.minX + 250, r.minX + 330, r.minX + 340]
         }
     }
 

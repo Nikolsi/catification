@@ -2,13 +2,13 @@
 
 ## Unreleased
 
-![Four cats asleep in a cardboard box, a pile of laundry, a flower pot and a wardrobe](docs/media/demo-naps.gif)
+![Cats asleep in an open box, on a closed box, in a pile of laundry, in a flower pot and in a wardrobe](docs/media/demo-naps.gif)
 
 - Cat character as data: habits, needs (company and curiosity), favourite nap spots, a daily routine and reactions to events, edited in the cat editor. The built-in personalities are presets that behave exactly as before.
 - "About this cat": describe a real cat in your own words.
 - Export and import cats as `.catprofile` files.
 - Only the habits and nap spots that make a cat special are listed; add more from a menu. Many more nap spots, and a ★ for the very favourite.
-- New cosy furniture to nap in: a cardboard box, a pile of laundry, a wardrobe (with a top to climb onto) and a flower pot that gets squashed.
+- New cosy furniture to nap in: an open box (only the ears peek out), a closed box to sleep on, a pile of laundry, a wardrobe (with a top to climb onto) and a flower pot that gets squashed.
 
 ## 0.1.0
 

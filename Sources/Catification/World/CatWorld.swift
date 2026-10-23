@@ -317,10 +317,12 @@ final class CatWorld {
                     let half = CGFloat(PropArt.postWidth - 2) / 2 * p
                     list.append(Surface(id: .perch(f.id), y: perchY, segments: [(x - half)...(x + half)], anchor: CGPoint(x: x, y: perchY)))
                     newLinks.append(ClimbLink(post: f.id, x: x, bottom: .ground, top: .perch(f.id)))
-                case .wardrobe:
+                case .wardrobe, .closedBox:
+                    // Tall or closed things have a top cats can climb onto.
                     guard let body = props[f.id], body.surface != nil else { break }
-                    let top = body.y + CGFloat(PropArt.wardrobe(front: false).height - 2) * p
-                    let half = CGFloat(PropArt.wardrobeWidth) / 2 * p - p
+                    let art = f.kind == .wardrobe ? PropArt.wardrobe(front: false) : PropArt.closedBox()
+                    let top = body.y + CGFloat(art.height - 2) * p
+                    let half = CGFloat(art.width - 2) / 2 * p - p
                     list.append(Surface(id: .top(f.id), y: top, segments: [(body.x - half)...(body.x + half)], anchor: CGPoint(x: body.x, y: top)))
                 default:
                     break
@@ -533,6 +535,10 @@ final class CatWorld {
         case .trash:
             return furniture.filter { $0.kind == .trash }.compactMap { self.place($0.id, kind: .trash) }.randomElement()
                 .flatMap { beside($0.x, on: $0.surface) }
+        case .closedBox:
+            return furniture.filter { $0.kind == .closedBox }.randomElement().flatMap { box in
+                surfaces[.top(box.id)] != nil ? (SurfaceID.top(box.id), props[box.id]?.x ?? CGFloat(box.x)) : nil
+            }
         case .bed, .high, .friends, .box, .laundry, .wardrobe, .flowerPot:
             return nil  // handled by the cat itself: furniture to curl up in, the top shelf or a sleeping friend
         }
@@ -785,6 +791,10 @@ final class CatWorld {
             let busy = cats.contains { $0.trashID == f.id && $0.rummageHidden }
             let shake = busy ? CGFloat(sin(now * 40)) * p * 0.6 : 0
             return (art, PropArt.trash(front: true), CGPoint(x: body.x - CGFloat(art.width) * p / 2 + shake, y: body.y - p), 6, "trash")
+        case .closedBox:
+            guard let body = props[f.id] else { return nil }
+            let art = PropArt.closedBox()
+            return (art, nil, CGPoint(x: body.x - CGFloat(art.width) * p / 2, y: body.y - p), 6, "closedBox")
         case .box, .laundry, .wardrobe, .flowerPot:
             guard let body = props[f.id] else { return nil }
             let occupied = cats.contains { $0.isAsleep && $0.bedID == f.id }
@@ -837,7 +847,7 @@ final class CatWorld {
     }
 
     private func furnitureHit(at p: CGPoint) -> (UUID, FurnitureGrab)? {
-        let order: [FurnitureKind: Int] = [.bowl: 0, .flowerPot: 1, .trash: 2, .box: 3, .laundry: 4, .bed: 5, .wardrobe: 6, .post: 7, .shelf: 8]
+        let order: [FurnitureKind: Int] = [.bowl: 0, .flowerPot: 1, .trash: 2, .box: 3, .closedBox: 3, .laundry: 4, .bed: 5, .wardrobe: 6, .post: 7, .shelf: 8]
         let sorted = furniture.sorted { order[$0.kind]! < order[$1.kind]! }
         for f in sorted {
             guard let r = furnitureViews[f.id]?.frame, r.insetBy(dx: -6, dy: -6).contains(p) else { continue }

@@ -34,7 +34,7 @@ Catification is a small native macOS app (Swift, AppKit, Core Animation) that tu
     <td align="center"><img src="docs/media/demo-play.gif" width="420" alt="Two cats chase each other and then sit together"><br><sub>Playing chase</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/media/demo-naps.gif" width="560" alt="Four cats asleep in a cardboard box, a pile of laundry, a flower pot and a wardrobe"><br><sub>Everyone has a favourite nap spot</sub></td>
+    <td colspan="2" align="center"><img src="docs/media/demo-naps.gif" width="560" alt="Cats asleep in an open box, on a closed box, in a pile of laundry, in a flower pot and in a wardrobe"><br><sub>Everyone has a favourite nap spot</sub></td>
   </tr>
 </table>
 
@@ -45,7 +45,7 @@ Catification is a small native macOS app (Swift, AppKit, Core Animation) that tu
 - **Notch portals.** On MacBooks with a notch, cats walk into a blue portal on one side and come out of an orange one on the other.
 - **Three worlds:** menu bar only; the whole screen above your windows (menu bar, shelves, the tops of other apps' windows, the bottom edge); or the desktop behind your windows.
 - **Jump math.** Before a big jump a cat crouches, formulas float above its head (Δx, θ, √2gh, ∫ …) and a dotted parabola draws itself to the landing spot. Now and then it misjudges and ends up hanging off the edge.
-- **Furniture you arrange yourself:** shelves, a scratching post (claw sharpening included), a cat bed, a food bowl (click to fill it), a trash can to rummage in, and cosy nap spots: a cardboard box, a pile of laundry, a wardrobe with an open bottom shelf and a flower pot (the plant gets squashed).
+- **Furniture you arrange yourself:** shelves, a scratching post (claw sharpening included), a cat bed, a food bowl (click to fill it), a trash can to rummage in, and cosy nap spots: an open box, a closed box to sleep on, a pile of laundry, a wardrobe with an open bottom shelf and a flower pot (the plant gets squashed).
 - **Toys:** a ball of yarn, a laser pointer and butterflies to hunt.
 - **Make them yours:** name, coat preset or custom colours, pattern (solid, tabby, spotted, colorpoint), eye colour, personality and size, with a live preview.
 - **Bring your own cat.** Describe a real cat and tune its character: habits (trash digging, napping, cuddles…), favourite nap spots, a daily routine and how it reacts to things. Share cats as `.catprofile` files.
