@@ -498,6 +498,41 @@ final class CatWorld {
         return (best.id, CGFloat.random(in: (seg.lowerBound + m)...(seg.upperBound - m)))
     }
 
+    /// Somewhere fitting for a cat to nap at one of its favourite kinds of place.
+    func napSpot(_ place: CatPlace, for cat: Cat) -> (surface: SurfaceID, x: CGFloat)? {
+        func anywhere(on id: SurfaceID) -> (surface: SurfaceID, x: CGFloat)? {
+            guard let s = surfaces[id], let seg = s.segments.randomElement() else { return nil }
+            return (id, clampOnSurface(.random(in: seg), id, for: cat))
+        }
+        func beside(_ x: CGFloat, on id: SurfaceID) -> (surface: SurfaceID, x: CGFloat)? {
+            let side: CGFloat = cat.x < x ? -1 : 1
+            return (id, clampOnSurface(x + side * 14 * cat.pixel, id, for: cat))
+        }
+        switch place {
+        case .perch:
+            return furniture.filter { $0.kind == .post }.randomElement().flatMap { post in
+                surfaces[.perch(post.id)] != nil ? (SurfaceID.perch(post.id), CGFloat(post.x)) : nil
+            }
+        case .shelf:
+            return furniture.filter { $0.kind == .shelf }.randomElement().flatMap { anywhere(on: .shelf($0.id)) }
+        case .menuBar:
+            return anywhere(on: .menuBar)
+        case .floor:
+            return anywhere(on: .ground)
+        case .windows:
+            return surfaces.keys.filter(\.isWindow).randomElement().flatMap { anywhere(on: $0) }
+        case .cursor:
+            return surfaceUnder(mouse).flatMap { beside($0.x, on: $0.surface) }
+        case .bowl:
+            return nearestBowl(for: cat).flatMap { beside($0.x, on: $0.surface) }
+        case .trash:
+            return furniture.filter { $0.kind == .trash }.compactMap { self.place($0.id, kind: .trash) }.randomElement()
+                .flatMap { beside($0.x, on: $0.surface) }
+        case .bed, .high, .friends:
+            return nil  // handled by the cat itself: they need a free bed, the top shelf or a sleeping friend
+        }
+    }
+
     func randomSpot(on id: SurfaceID, near x: CGFloat, for cat: Cat) -> CGFloat {
         guard let s = surfaces[id] else { return x }
         if id == .menuBar { return clampOnSurface(.random(in: playArea.minX...playArea.maxX), id, for: cat) }

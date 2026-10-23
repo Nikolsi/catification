@@ -6,6 +6,7 @@ struct CharacterSections: View {
     @Binding var cat: CatConfig
     /// Habits just added at 1×, kept on screen until they're moved or removed.
     @State private var addedHabits: Set<String> = []
+    @State private var addedPlaces: Set<CatPlace> = []
 
     /// Habits as people think of them; each slider moves one or more actions together.
     private static let habitGroups: [(title: String, actions: [CatAction])] = [
@@ -81,8 +82,41 @@ struct CharacterSections: View {
         }
 
         Section("Favourite nap spots") {
-            ForEach(CatPlace.allCases) { place in
-                slider(place.title, value: placeBinding(place), range: 0...3)
+            ForEach(shownPlaces) { place in
+                HStack {
+                    slider(place.title, value: placeBinding(place), range: 0...3)
+                    Button {
+                        addedPlaces.remove(place)
+                        brain.wrappedValue.places[place] = 0
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Not a favourite")
+                }
+            }
+            if shownPlaces.isEmpty {
+                Text("Naps wherever it happens to be.")
+                    .foregroundStyle(.secondary)
+            }
+            HStack {
+                Menu {
+                    ForEach(hiddenPlaces) { place in
+                        Button(place.title) {
+                            addedPlaces.insert(place)
+                            brain.wrappedValue.places[place] = 1
+                        }
+                    }
+                } label: {
+                    Label("Add a spot", systemImage: "plus")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .disabled(hiddenPlaces.isEmpty)
+                Spacer()
+                Text("1× a usual spot, 3× a firm favourite.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
 
@@ -165,6 +199,14 @@ struct CharacterSections: View {
                 brain.wrappedValue = b
             }
         )
+    }
+
+    private var shownPlaces: [CatPlace] {
+        CatPlace.allCases.filter { cat.effectiveBrain.place($0) > 0.05 || addedPlaces.contains($0) }
+    }
+
+    private var hiddenPlaces: [CatPlace] {
+        CatPlace.allCases.filter { !shownPlaces.contains($0) }
     }
 
     private func placeBinding(_ place: CatPlace) -> Binding<Double> {

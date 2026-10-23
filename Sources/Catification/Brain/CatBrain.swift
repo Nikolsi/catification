@@ -27,7 +27,7 @@ enum CatAction: String, Codable, CaseIterable, CodingKeyRepresentable, Identifia
 
 /// Favourite places, used when a cat picks somewhere to nap.
 enum CatPlace: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiable {
-    case bed, high, friends
+    case bed, high, friends, perch, shelf, menuBar, floor, windows, cursor, bowl, trash
 
     var id: String { rawValue }
 
@@ -36,7 +36,20 @@ enum CatPlace: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiab
         case .bed: L("In the cat bed")
         case .high: L("Up high")
         case .friends: L("Next to a friend")
+        case .perch: L("On the scratching post")
+        case .shelf: L("On a shelf")
+        case .menuBar: L("On the menu bar")
+        case .floor: L("On the floor")
+        case .windows: L("On top of a window")
+        case .cursor: L("Near your cursor")
+        case .bowl: L("By the food bowl")
+        case .trash: L("By the trash can")
         }
+    }
+
+    /// An ordinary cat likes its bed and napping next to friends; any other spot is a quirk.
+    var defaultPreference: Double {
+        self == .bed || self == .friends ? 1 : 0
     }
 }
 
@@ -195,16 +208,20 @@ struct CatBrain: Codable, Hashable {
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         version = try c.decodeIfPresent(Int.self, forKey: .version) ?? CatBrain.currentVersion
-        habits = (try c.decodeIfPresent([CatAction: Double].self, forKey: .habits) ?? [:]).mapValues { min(3, max(0, $0)) }
-        places = (try c.decodeIfPresent([CatPlace: Double].self, forKey: .places) ?? [:]).mapValues { min(3, max(0, $0)) }
+        // Keys this version doesn't know (from a newer profile) are skipped, not fatal.
+        func known<Key: RawRepresentable & Hashable, Value>(_ raw: [String: Value]?, _: Key.Type) -> [Key: Value] where Key.RawValue == String {
+            Dictionary((raw ?? [:]).compactMap { k, v in Key(rawValue: k).map { ($0, v) } }, uniquingKeysWith: { a, _ in a })
+        }
+        habits = known(try c.decodeIfPresent([String: Double].self, forKey: .habits), CatAction.self).mapValues { min(3, max(0, $0)) }
+        places = known(try c.decodeIfPresent([String: Double].self, forKey: .places), CatPlace.self).mapValues { min(3, max(0, $0)) }
         needs = try c.decodeIfPresent(NeedSettings.self, forKey: .needs) ?? NeedSettings()
         routines = try c.decodeIfPresent([Routine].self, forKey: .routines) ?? []
         reactions = try c.decodeIfPresent([Reaction].self, forKey: .reactions) ?? []
-        phrases = try c.decodeIfPresent([PhraseSituation: [String]].self, forKey: .phrases) ?? [:]
+        phrases = known(try c.decodeIfPresent([String: [String]].self, forKey: .phrases), PhraseSituation.self)
     }
 
     func habit(_ action: CatAction) -> Double { habits[action] ?? 1 }
-    func place(_ place: CatPlace) -> Double { places[place] ?? (place == .high ? 0 : 1) }
+    func place(_ place: CatPlace) -> Double { places[place] ?? place.defaultPreference }
 
     /// The brain behind each built-in personality. Habit values reproduce the weights the
     /// app used before brains existed, so a cat that was never customised behaves the same.

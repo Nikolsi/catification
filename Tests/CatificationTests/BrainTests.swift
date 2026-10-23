@@ -117,6 +117,22 @@ final class BrainTests: XCTestCase {
         XCTAssertEqual(brain.needs, NeedSettings())
     }
 
+    func testNapSpotDefaultsAndUnknownKeys() throws {
+        let brain = CatBrain()
+        XCTAssertEqual(brain.place(.bed), 1)
+        XCTAssertEqual(brain.place(.friends), 1)
+        for place in CatPlace.allCases where place != .bed && place != .friends {
+            XCTAssertEqual(brain.place(place), 0, "\(place)")
+        }
+        // A profile from a newer version with spots and habits this one doesn't know still loads.
+        let json = #"{"places": {"trash": 3, "cardboardBox": 2}, "habits": {"rummage": 2, "knitting": 1}}"#
+        let decoded = try JSONDecoder().decode(CatBrain.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.place(.trash), 3)
+        XCTAssertEqual(decoded.habit(.rummage), 2)
+        XCTAssertEqual(decoded.places.count, 1)
+        XCTAssertEqual(decoded.habits.count, 1)
+    }
+
     func testCatsSavedBeforeBrainsStillLoad() throws {
         let old = #"""
         {"id": "5C1A4A9E-2F43-4C1B-9E3B-3D7E2B8F9A10", "name": "Ginger",
