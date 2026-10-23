@@ -15,6 +15,7 @@ make sprites    # every animation of every coat in .preview/sprites.png
 - `CATIFICATION_DEBUG=1 make dev` prints every activity change of every cat, which helps a lot when tuning behaviour.
 - `Catification --settings` opens the settings window on launch.
 - `scripts/build-app.sh --universal --version 1.2.3` is what the release workflow runs.
+- Working with a coding agent? [AGENTS.md](AGENTS.md) and [docs/agents/](docs/agents/) are written for it (and are a quick tour for people too).
 
 ## Where things live
 
@@ -28,6 +29,10 @@ make sprites    # every animation of every coat in .preview/sprites.png
 | Settings | `Model/`, `UI/` |
 
 Sprites are ASCII grids. Letters are colour *roles*, not colours: `F` fur, `S` stripes, `D` far-side fur, `B` belly and paws, `P` pink, `E` eyes, `K` ink. Outlines are added automatically. After changing art, run `make sprites` and look at the sheet.
+
+Where the code is heading: the simulation is slowly becoming a Swift library that doesn't depend on AppKit,
+with the Mac app as its first platform adapter. See [docs/architecture/engine-strategy.md](docs/architecture/engine-strategy.md).
+New simulation code that doesn't need AppKit is easier to move later.
 
 ## Demo recordings
 
