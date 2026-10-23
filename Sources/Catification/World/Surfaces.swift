@@ -1,6 +1,8 @@
 import AppKit
 
-enum SurfaceID: Hashable {
+/// Comparable so that ties (two equally good routes, equally high shelves) are broken the same way
+/// every run: the order of sets and dictionaries changes even between two worlds in one process.
+enum SurfaceID: Hashable, Comparable {
     case menuBar
     case ground
     case shelf(UUID)
@@ -22,6 +24,10 @@ enum SurfaceID: Hashable {
         default: false
         }
     }
+}
+
+extension SurfaceID {
+    static func < (a: SurfaceID, b: SurfaceID) -> Bool { String(describing: a) < String(describing: b) }
 }
 
 /// Something a cat can stand on: a horizontal line, possibly broken into several pieces

@@ -22,6 +22,11 @@ enum CatificationApp {
             return
         }
 
+        if args.contains("--simulate") {
+            Simulate.run(args)
+            return
+        }
+
         // A repeatable run: the same seed gives the same cats doing the same things (with the same input).
         if let seed = Sim.commandLineSeed { Sim.seed(seed) }
 

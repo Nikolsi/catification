@@ -16,6 +16,7 @@ make test       # unit tests (swift test): must pass before every PR
 make sprites    # every animation of every coat in .preview/sprites.png: look at it after art changes
 make app        # release .app in build/ (ad-hoc signed)
 make demos      # re-record the README GIFs (needs Screen Recording permission)
+.build/debug/Catification --simulate 8   # eight simulated hours in seconds: what every cat did
 ```
 
 ## Rules that matter

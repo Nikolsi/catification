@@ -12,6 +12,19 @@ A cat's character is data (`CatBrain`), not code. The app runs it locally and de
 
 `CATIFICATION_DEBUG=1 make dev` logs every activity change with the scores.
 
+## Checking behaviour over a simulated day
+
+Don't tune behaviour by watching the screen. Run it:
+
+- `Catification --simulate 8 [--seed N] [cats.catprofile …]` prints, per cat, the actions it started,
+  the share of time per activity, where it napped and how often it jumped, calculated, hung and fell.
+- In tests, use `World` (`World/World.swift`): `World(seed:)`, `spawn(character:)`, `emit(.petted, to:)`,
+  `run(for:)` / `update(deltaTime:)`, then read `world.report`. See `WorldTests` for examples.
+- The same seed, cats and steps give the same report. Everything cats do takes time from `Sim.time` and
+  randomness from `Sim.rng`; never call `Date()`, `CACurrentMediaTime()` or `.random()` without
+  `using: &Sim.rng` in simulation code, and don't let the order of a `Set` or `Dictionary` decide anything
+  (sort first: `SurfaceID` and `Navigator.Node` are `Comparable` for that).
+
 ## The brain (`Brain/CatBrain.swift`)
 
 - `habits`: multiplier per `CatAction` (0…3); only the special ones are listed in the editor.

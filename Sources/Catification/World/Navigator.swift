@@ -26,9 +26,11 @@ struct NavLimits {
 
 /// Plans routes between surfaces: walk to a takeoff point, jump or climb, repeat.
 enum Navigator {
-    struct Node: Hashable {
+    struct Node: Hashable, Comparable {
         let id: SurfaceID
         let segment: Int
+
+        static func < (a: Node, b: Node) -> Bool { a.id != b.id ? a.id < b.id : a.segment < b.segment }
     }
 
     struct Entry {
@@ -111,9 +113,12 @@ enum Navigator {
         var best: [Node: Entry] = [start: Entry(cost: 0, x: startX)]
         var open: Set<Node> = [start]
         var done = Set<Node>()
-        let nodes = surfaces.values.flatMap { s in s.segments.indices.map { Node(id: s.id, segment: $0) } }
+        let nodes = surfaces.values.flatMap { s in s.segments.indices.map { Node(id: s.id, segment: $0) } }.sorted()
 
-        while let current = open.min(by: { best[$0]!.cost < best[$1]!.cost }) {
+        while let current = open.min(by: { a, b in
+            let ca = best[a]!.cost, cb = best[b]!.cost
+            return ca != cb ? ca < cb : a < b
+        }) {
             open.remove(current)
             done.insert(current)
             guard let entry = best[current], let a = surfaces[current.id] else { continue }
