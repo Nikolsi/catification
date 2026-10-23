@@ -50,6 +50,13 @@ scripts/record-demos.sh jump trash  # just some
 - Your terminal needs the Screen Recording permission. Don't touch the mouse while recording: the
   `pet` scene moves the cursor itself, and the others park it off-stage.
 
+## Credit
+
+Ideas count as contributions too. When a change lands, its `CHANGELOG.md` line credits the people behind it:
+`(idea by @someone)` or `(by @someone in #12)`. The release notes then thank everyone mentioned, plus the authors of
+pull requests merged since the last release, automatically. People who shaped the project also get a line in the
+**Thanks** section of the README.
+
 ## Releasing (maintainer)
 
 1. In `CHANGELOG.md`, rename `## Unreleased` to the new version, e.g. `## 0.2.0`. Show off new features with their demo GIFs as plain images (`![…](docs/media/demo-naps.gif)`).

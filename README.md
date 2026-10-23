@@ -108,6 +108,12 @@ Bugs and feature requests go to [Issues](../../issues); questions, ideas and scr
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Translations are especially welcome.
 
+## Thanks
+
+- [@nanot1m](https://github.com/nanot1m) for the notch portals idea.
+
+Everyone who helps, with code, art, translations or ideas, is credited in the [changelog](CHANGELOG.md) and the release notes.
+
 ## License
 
 [MIT](LICENSE) © Nikolai Arso
