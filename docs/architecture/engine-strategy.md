@@ -46,31 +46,50 @@ A first pass over the imports of every source file:
 | **The knot** | `World/Cat` (~1600 lines), `World/CatWorld` (~1300 lines) | Simulation and presentation in the same classes: a cat owns its `CALayer`s, the world owns the panel, timers and window tracking. Splitting these is most of the work. |
 | **Platform** | `Surfaces`, `DesktopIcons`, `OverlayPanel`, `WorldGeometry`, `Portal`, `Particle`, `Butterfly`, `WorldObjects`, `App/`, `UI/` | Stay in the app; some of their logic (portal state, butterfly flight) moves to the engine later. |
 
+## The gap
+
+Today's brain can only *tune* behaviour: weights over a fixed list of actions, favourite places, a daily
+routine, reactions picked from a fixed list. A new habit ("after eating she naps on the wardrobe",
+"at 6 am he wakes you by walking over the menu bar") is a sequence with conditions, and that still
+takes Swift. Closing this gap matters more for the product than portability does.
+
 ## Roadmap
 
-### Now: a portable core (alongside v0.2–v0.3)
+Order is set by what makes new behaviour faster to build and to check. Refactoring happens only where
+a step needs it.
 
-- A `CatificationCore` library target with what is portable today: brain, planner, models, navigator.
-  The app depends on it. Nothing changes for users.
-- A Linux job in CI that builds and tests the core, so it stays portable.
-- **Deterministic simulation:** time and randomness injected (a clock and a seeded generator).
-  This pays off immediately: demo videos stop depending on retries and "wait until the cat sits",
-  and behaviour gets scenario tests ("a trash-loving cat rummages more over a simulated day").
+### Now: behaviour you can check in seconds
 
-### Next: simulation and presentation apart
+- **Deterministic simulation** (#19): time and randomness injected (a clock and a seeded generator).
+  Demo videos stop depending on retries, and runs can be replayed.
+- **A fast-forward runner:** run a world for a simulated day without showing it, faster than real time,
+  and count what each cat did ("the trash lover rummaged 14 times, the plain cat 3"). Behaviour tuning
+  and regression tests stop needing someone to watch the screen. This first version can run inside the
+  app process (layers exist but are never shown), so it doesn't wait for the big split.
 
-- Extract the state and `update()` of a cat (`CatSim`) from `Cat`, and the world's state from `CatWorld`,
-  bit by bit, in the places we touch for features anyway.
-- A snapshot that the macOS renderer reads each frame. Thought bubbles (v0.3) are the first new
-  presentation element built on it.
-- A **headless runner**: run a world for a simulated day without a screen. Used by tests, and by the
-  AI features to check that "description → character" really produces the cat that was described.
+### Next: behaviour recipes
+
+A recipe is a habit as data: a trigger, conditions and steps made of primitives the cats already have.
+
+```json
+{ "name": "Morning trash patrol",
+  "when": { "hours": "7-10", "every": "2h" }, "chance": 0.5,
+  "do": [ { "goTo": "trash" }, { "rummage": 8 }, { "emote": "happy" }, { "say": "Treasure!" } ] }
+```
+
+- Triggers: time of day, events (petted, ate, woke up, a friend nearby), needs, where the cat is.
+- Steps: go to a place or furniture, sit, nap, rummage, groom, look at or follow the cursor, emote, jump, say.
+- Stored in the brain, so recipes travel in `.catprofile` files. Validated and versioned like the rest.
+- Needs the actions in `Cat` to become separate steps: the first, small part of splitting simulation from
+  presentation, done because recipes need it.
+- Later: a recipe editor in the cat editor, and AI that turns "my cat always…" into recipes for review.
 
 ### Later, when there is a reason
 
-- **Environment API:** normalised surfaces and obstacles, capability discovery, one event pipeline
-  for user, OS and app events (app awareness from the v0.3 ideas lands here).
-- **Declarative behaviours:** reactions and routines in a versioned format, loaded and validated at runtime.
+- **Portable core and Linux CI** (#18): cheap hygiene, done when it is convenient.
+- **Simulation and presentation fully apart:** a snapshot the renderer reads each frame; a truly headless runner.
+- **Environment API:** normalised surfaces and obstacles, capability discovery, one event pipeline for user,
+  OS and app events.
 - **A second platform.** Windows only when people ask for it. The portable core is the cheap part;
   the adapter (window enumeration, a transparent click-through overlay, rendering, and a new home for
   the portals without a notch) is close to a new app.
@@ -88,8 +107,23 @@ Next steps, in rough order:
 - Double-click a `.catprofile` to import it (document type in the app bundle), and a gallery of shared cats in Discussions.
 - A published, versioned JSON schema for profiles, so people can write and validate them by hand.
 - Reactions and routines fully editable in the editor; phrases per cat once bubbles exist.
+- Behaviour recipes (see the roadmap): new habits as data, not just tuned weights.
+- Teaching (below): the owner shapes habits by petting and pointing, without any editor at all.
 - Custom looks: palette and pattern editing, then sprite import (Aseprite / PNG sheets).
 - Describe a cat in words → profile, with local AI (v0.3 ideas).
+
+### Teaching
+
+Cats learn from how they are treated, the way real pets do. No model, no training data: small, visible
+changes to the brain the owner can always see and edit.
+
+- **Clicker training:** stroking a cat right after it did something makes that habit a little stronger;
+  squishing makes it a little weaker. Each nudge is small, habits stay within their limits (0–3) and drift
+  slowly back towards the personality's default, so a cat never gets stuck at an extreme.
+  (It is the classic conditioning rule from animal psychology: the change is proportional to how
+  surprising the reward is.)
+- **"This is her spot":** drop a cat somewhere and mark it as a favourite place.
+- **The diary** (v0.3) tells what a cat has learnt: "Ginger sleeps on the wardrobe more and more."
 
 ### Installing
 
@@ -125,4 +159,4 @@ the simulation deterministic and the renderer separate.
 - Catification keeps its behaviour and its ~2–3% idle CPU.
 - Saved cats keep loading across format changes.
 - The same simulation runs with and without a screen.
-- A cat's behaviour can be created or changed without writing Swift.
+- A new habit can be created, shared and checked without writing Swift.
