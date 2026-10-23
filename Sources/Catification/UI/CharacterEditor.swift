@@ -4,6 +4,8 @@ import SwiftUI
 /// daily routines and reactions. Editing anything turns the personality preset into a custom brain.
 struct CharacterSections: View {
     @Binding var cat: CatConfig
+    /// Habits just added at 1×, kept on screen until they're moved or removed.
+    @State private var addedHabits: Set<String> = []
 
     /// Habits as people think of them; each slider moves one or more actions together.
     private static let habitGroups: [(title: String, actions: [CatAction])] = [
@@ -33,12 +35,39 @@ struct CharacterSections: View {
         }
 
         Section {
-            ForEach(Self.habitGroups, id: \.title) { group in
-                slider(group.title, value: habitBinding(group.actions), range: 0...3)
+            // Only what makes this cat different from an ordinary one; everything else is 1×.
+            ForEach(shownHabitGroups, id: \.title) { group in
+                HStack {
+                    slider(group.title, value: habitBinding(group.actions), range: 0...3)
+                    Button {
+                        resetHabit(group)
+                    } label: {
+                        Image(systemName: "minus.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Back to ordinary")
+                }
             }
-            Text("1× is an ordinary cat, 0 never, 3× all the time.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            if shownHabitGroups.isEmpty {
+                Text("An ordinary cat. Add what makes this one special.")
+                    .foregroundStyle(.secondary)
+            }
+            HStack {
+                Menu {
+                    ForEach(hiddenHabitGroups, id: \.title) { group in
+                        Button(group.title) { addedHabits.insert(group.title) }
+                    }
+                } label: {
+                    Label("Add a habit", systemImage: "plus")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .disabled(hiddenHabitGroups.isEmpty)
+                Spacer()
+                Text("1× is an ordinary cat, 0 never, 3× all the time.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         } header: {
             HStack {
                 Text("Habits")
@@ -106,6 +135,25 @@ struct CharacterSections: View {
                     .frame(width: 38, alignment: .trailing)
             }
         }
+    }
+
+    private func isSpecial(_ group: (title: String, actions: [CatAction])) -> Bool {
+        abs(cat.effectiveBrain.habit(group.actions[0]) - 1) > 0.05
+    }
+
+    private var shownHabitGroups: [(title: String, actions: [CatAction])] {
+        Self.habitGroups.filter { isSpecial($0) || addedHabits.contains($0.title) }
+    }
+
+    private var hiddenHabitGroups: [(title: String, actions: [CatAction])] {
+        Self.habitGroups.filter { !isSpecial($0) && !addedHabits.contains($0.title) }
+    }
+
+    private func resetHabit(_ group: (title: String, actions: [CatAction])) {
+        addedHabits.remove(group.title)
+        var b = brain.wrappedValue
+        for action in group.actions { b.habits[action] = nil }
+        brain.wrappedValue = b
     }
 
     private func habitBinding(_ actions: [CatAction]) -> Binding<Double> {
