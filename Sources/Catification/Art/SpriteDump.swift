@@ -43,6 +43,9 @@ enum SpriteDump {
             PropArt.shelf(width: 30).image, PropArt.post(height: 40).image, PropArt.bed(front: false).image,
             PropArt.bowl(food: 2).image, PropArt.bowl(food: 1).image, PropArt.bowl(food: 0).image,
             PropArt.trash(front: false).image, PropArt.trash(front: true).image, PropArt.yarn(frame: 0).image,
+            PropArt.box(front: false).image, PropArt.laundry(front: false).image,
+            PropArt.flowerPot(squashed: false, front: false).image, PropArt.flowerPot(squashed: true, front: false).image,
+            PropArt.wardrobe(front: false).image,
             PixelFont.sprite("Δx=137", color: PixelFont.colors[1]).image, PixelFont.sprite("θ=45°", color: PixelFont.colors[2]).image,
             PixelFont.sprite("√2gh", color: PixelFont.colors[0]).image, PixelFont.sprite("x²+y²", color: PixelFont.colors[3]).image,
         ] + [EmoteKind.question, .check, .fish, .target, .paper, .bone].compactMap { EmoteArt.sprites[$0]?.image }

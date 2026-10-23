@@ -9,7 +9,7 @@ struct EditPaletteView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(96), spacing: 8), count: 5), spacing: 8) {
                 ForEach(FurnitureKind.allCases) { kind in
                     tile(kind.title, image: Self.preview(kind)) { add(kind) }
                 }
@@ -37,9 +37,12 @@ struct EditPaletteView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .frame(width: 44, height: 34)
-                Text(title).font(.caption)
+                Text(title)
+                    .font(.caption)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
             }
-            .frame(width: 70, height: 60)
+            .frame(width: 84, height: 66)
         }
         .buttonStyle(.bordered)
     }
@@ -51,6 +54,10 @@ struct EditPaletteView: View {
         case .bed: PropArt.bed(front: false).image
         case .bowl: PropArt.bowl(food: 2).image
         case .trash: PropArt.trash(front: false).image
+        case .box: PropArt.box(front: false).image
+        case .laundry: PropArt.laundry(front: false).image
+        case .wardrobe: PropArt.wardrobe(front: false).image
+        case .flowerPot: PropArt.flowerPot(squashed: false, front: false).image
         }
     }
 }

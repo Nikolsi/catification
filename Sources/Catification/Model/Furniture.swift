@@ -26,7 +26,7 @@ enum WorldMode: String, Codable, CaseIterable, Identifiable {
 }
 
 enum FurnitureKind: String, Codable, CaseIterable, Identifiable {
-    case shelf, post, bed, bowl, trash
+    case shelf, post, bed, bowl, trash, box, laundry, wardrobe, flowerPot
 
     var id: String { rawValue }
 
@@ -37,11 +37,18 @@ enum FurnitureKind: String, Codable, CaseIterable, Identifiable {
         case .bed: L("Cat bed")
         case .bowl: L("Bowl")
         case .trash: L("Trash can")
+        case .box: L("Cardboard box")
+        case .laundry: L("Pile of laundry")
+        case .wardrobe: L("Wardrobe")
+        case .flowerPot: L("Flower pot")
         }
     }
 
     /// Beds, bowls and the trash can are loose objects that fall onto whatever is below them.
-    var isProp: Bool { self == .bed || self == .bowl || self == .trash }
+    var isProp: Bool { self != .shelf && self != .post }
+
+    /// Furniture a cat can curl up inside.
+    var isNapSpot: Bool { [.bed, .box, .laundry, .wardrobe, .flowerPot].contains(self) }
 }
 
 /// Coordinates are in points relative to the bottom-left corner of the screen.
@@ -63,7 +70,7 @@ struct Furniture: Codable, Identifiable, Hashable {
         switch kind {
         case .shelf: Furniture(kind: .shelf, x: x - 100, y: y, width: 200)
         case .post: Furniture(kind: .post, x: x, y: 0, height: 240)
-        case .bed, .bowl, .trash: Furniture(kind: kind, x: x, y: y)
+        default: Furniture(kind: kind, x: x, y: y)
         }
     }
 

@@ -194,7 +194,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 done: { [weak self] in self?.world.setEditMode(false) }
             )
             let panel = NSPanel(
-                contentRect: NSRect(x: 0, y: 0, width: 560, height: 150),
+                contentRect: NSRect(x: 0, y: 0, width: 560, height: 230),
                 styleMask: [.titled, .closable, .utilityWindow, .nonactivatingPanel],
                 backing: .buffered, defer: false
             )

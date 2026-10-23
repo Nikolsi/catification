@@ -317,7 +317,12 @@ final class CatWorld {
                     let half = CGFloat(PropArt.postWidth - 2) / 2 * p
                     list.append(Surface(id: .perch(f.id), y: perchY, segments: [(x - half)...(x + half)], anchor: CGPoint(x: x, y: perchY)))
                     newLinks.append(ClimbLink(post: f.id, x: x, bottom: .ground, top: .perch(f.id)))
-                case .bed, .bowl, .trash:
+                case .wardrobe:
+                    guard let body = props[f.id], body.surface != nil else { break }
+                    let top = body.y + CGFloat(PropArt.wardrobe(front: false).height - 2) * p
+                    let half = CGFloat(PropArt.wardrobeWidth) / 2 * p - p
+                    list.append(Surface(id: .top(f.id), y: top, segments: [(body.x - half)...(body.x + half)], anchor: CGPoint(x: body.x, y: top)))
+                default:
                     break
                 }
             }
@@ -487,7 +492,7 @@ final class CatWorld {
         guard let explored = explore(for: cat) else { return nil }
         let furniture = explored.map.keys.filter { node in
             switch node.id {
-            case .shelf, .perch: true
+            case .shelf, .perch, .top: true
             default: false
             }
         }
@@ -528,8 +533,8 @@ final class CatWorld {
         case .trash:
             return furniture.filter { $0.kind == .trash }.compactMap { self.place($0.id, kind: .trash) }.randomElement()
                 .flatMap { beside($0.x, on: $0.surface) }
-        case .bed, .high, .friends:
-            return nil  // handled by the cat itself: they need a free bed, the top shelf or a sleeping friend
+        case .bed, .high, .friends, .box, .laundry, .wardrobe, .flowerPot:
+            return nil  // handled by the cat itself: furniture to curl up in, the top shelf or a sleeping friend
         }
     }
 
@@ -640,18 +645,38 @@ final class CatWorld {
     }
     func bed(_ id: UUID) -> PlaceInfo? { place(id, kind: .bed) }
 
+    /// A piece of furniture a cat can sleep inside, wherever it currently stands.
+    func napFurniture(_ id: UUID) -> (info: PlaceInfo, kind: FurnitureKind)? {
+        guard let f = furniture.first(where: { $0.id == id }), f.kind.isNapSpot, let info = place(id, kind: f.kind) else { return nil }
+        return (info, f.kind)
+    }
+
+    func freeNapFurniture(_ kind: FurnitureKind, for cat: Cat) -> PlaceInfo? {
+        furniture.filter { $0.kind == kind }
+            .compactMap { place($0.id, kind: kind) }
+            .filter { spot in !cats.contains { $0 !== cat && $0.claims(bed: spot.id) } }
+            .randomElement()
+    }
+
+    /// How high above the furniture's bottom a napping cat lies, in points.
+    func napLift(_ kind: FurnitureKind) -> CGFloat {
+        let p = geo.furniturePixel
+        switch kind {
+        case .box: return PropArt.boxNapLift * p
+        case .laundry: return PropArt.laundryNapLift * p
+        case .wardrobe: return PropArt.wardrobeNapLift * p
+        case .flowerPot: return PropArt.potNapLift * p
+        default: return 2 * p
+        }
+    }
+
     func nearestBowl(for cat: Cat) -> PlaceInfo? {
         furniture.filter { $0.kind == .bowl }
             .compactMap { bowl($0.id) }
             .min { abs($0.x - cat.x) < abs($1.x - cat.x) }
     }
 
-    func freeBed(for cat: Cat) -> PlaceInfo? {
-        furniture.filter { $0.kind == .bed }
-            .compactMap { bed($0.id) }
-            .filter { b in !cats.contains { $0 !== cat && $0.claims(bed: b.id) } }
-            .randomElement()
-    }
+    func freeBed(for cat: Cat) -> PlaceInfo? { freeNapFurniture(.bed, for: cat) }
 
     /// One portion of food; false if the bowl is empty.
     func takeFood(from id: UUID) -> Bool {
@@ -760,6 +785,20 @@ final class CatWorld {
             let busy = cats.contains { $0.trashID == f.id && $0.rummageHidden }
             let shake = busy ? CGFloat(sin(now * 40)) * p * 0.6 : 0
             return (art, PropArt.trash(front: true), CGPoint(x: body.x - CGFloat(art.width) * p / 2 + shake, y: body.y - p), 6, "trash")
+        case .box, .laundry, .wardrobe, .flowerPot:
+            guard let body = props[f.id] else { return nil }
+            let occupied = cats.contains { $0.isAsleep && $0.bedID == f.id }
+            let back: PropArt.Art, front: PropArt.Art
+            switch f.kind {
+            case .box: (back, front) = (PropArt.box(front: false), PropArt.box(front: true))
+            case .laundry: (back, front) = (PropArt.laundry(front: false), PropArt.laundry(front: true))
+            case .wardrobe: (back, front) = (PropArt.wardrobe(front: false), PropArt.wardrobe(front: true))
+            default:
+                // A cat napping in the pot squashes the plant.
+                (back, front) = (PropArt.flowerPot(squashed: occupied, front: false), PropArt.flowerPot(squashed: occupied, front: true))
+            }
+            return (back, front, CGPoint(x: body.x - CGFloat(back.width) * p / 2, y: body.y - p), 6,
+                    "\(f.kind.rawValue)\(f.kind == .flowerPot && occupied)")
         case .bowl:
             guard let body = props[f.id] else { return nil }
             let level = f.food >= 0.6 ? 2 : (f.food > 0.05 ? 1 : 0)
@@ -792,13 +831,13 @@ final class CatWorld {
                     CGRect(x: r.maxX - s / 2, y: r.maxY - s, width: s, height: s)]
         case .post:
             return [CGRect(x: r.midX - s / 2, y: r.maxY - s / 2, width: s, height: s)]
-        case .bed, .bowl, .trash:
+        default:
             return []
         }
     }
 
     private func furnitureHit(at p: CGPoint) -> (UUID, FurnitureGrab)? {
-        let order: [FurnitureKind: Int] = [.bowl: 0, .trash: 1, .bed: 2, .post: 3, .shelf: 4]
+        let order: [FurnitureKind: Int] = [.bowl: 0, .flowerPot: 1, .trash: 2, .box: 3, .laundry: 4, .bed: 5, .wardrobe: 6, .post: 7, .shelf: 8]
         let sorted = furniture.sorted { order[$0.kind]! < order[$1.kind]! }
         for f in sorted {
             guard let r = furnitureViews[f.id]?.frame, r.insetBy(dx: -6, dy: -6).contains(p) else { continue }
@@ -810,7 +849,7 @@ final class CatWorld {
             case .post:
                 if p.y > r.maxY - 12 { return (f.id, .top) }
                 return (f.id, .move(dx: p.x - CGFloat(f.x), dy: 0))
-            case .bed, .bowl, .trash:
+            default:
                 let body = props[f.id]
                 return (f.id, .move(dx: p.x - (body?.x ?? CGFloat(f.x)), dy: p.y - (body?.y ?? CGFloat(f.y))))
             }

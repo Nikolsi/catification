@@ -15,6 +15,15 @@ enum PropArt {
         "Y": RGB(hex: 0xE85D8A), "y": RGB(hex: 0xB53A63),
         // Trash can
         "G": RGB(hex: 0xA9B4BF), "g": RGB(hex: 0x7D8894), "T": RGB(hex: 0x2C3138),
+        // Cardboard box
+        "A": RGB(hex: 0xC8955A), "a": RGB(hex: 0xA0703D), "e": RGB(hex: 0xDDB27A), "N": RGB(hex: 0x4A3424),
+        // A pile of laundry
+        "B": RGB(hex: 0x5B8BD6), "P": RGB(hex: 0xE88AA8), "E": RGB(hex: 0xE8C35A), "V": RGB(hex: 0x7FB86A), "Z": RGB(hex: 0xE9E6F2),
+        // Flower pot
+        "Q": RGB(hex: 0xC8643C), "q": RGB(hex: 0x9E4A2A), "F": RGB(hex: 0xDB7E55), "S": RGB(hex: 0x5A3A25),
+        "J": RGB(hex: 0x4F9E4A), "j": RGB(hex: 0x7CC46A), "X": RGB(hex: 0xF2C14E),
+        // Wardrobe insides and knobs
+        "n": RGB(hex: 0x2A2230), "x": RGB(hex: 0xE0B050),
     ]
     private static let outline = RGB(hex: 0x3A2216)
 
@@ -132,6 +141,144 @@ enum PropArt {
             if front {
                 c.draw([rows[0]], at: 1, 1, kind: .head, outline: .hard)
                 c.draw(Array(rows[2...]), at: 1, 3, kind: .body, outline: .hard)
+            } else {
+                c.draw(rows, at: 1, 1, kind: .body, outline: .hard)
+            }
+            return c
+        }
+    }
+
+    // MARK: Cosy nap spots
+    //
+    // Each comes as a back part (drawn behind a napping cat) and a front part drawn over it, so the
+    // cat looks like it's inside. `napLift` is how high above the bottom the cat lies, in pixels.
+
+    static let boxWidth = 20
+    static let boxNapLift: CGFloat = 5
+
+    @MainActor static func box(front: Bool) -> Art {
+        cached(front ? "boxFront" : "boxBack") {
+            let rows = [
+                "ee................ee",
+                "eAe..............eAe",
+                "aAAAAAAAAAAAAAAAAAAa",
+                "aNNNNNNNNNNNNNNNNNNa",
+                "aNNNNNNNNNNNNNNNNNNa",
+                "AAAAAAAAAeeAAAAAAAAA",
+                "AAAAAAAAAeeAAAAAAAAA",
+                "AAAAAAAAAeeAAAAAAAAA",
+                "AAAAAAAAAeeAAAAAAAAA",
+                "aAAAAAAAAeeAAAAAAAAa",
+                "aaaaaaaaaaaaaaaaaaaa",
+            ]
+            var c = PixelCanvas(width: boxWidth + 2, height: rows.count + 2)
+            if front {
+                c.draw(Array(rows[5...]), at: 1, 6, kind: .body, outline: .hard)
+            } else {
+                c.draw(rows, at: 1, 1, kind: .body, outline: .hard)
+            }
+            return c
+        }
+    }
+
+    static let laundryWidth = 22
+    static let laundryNapLift: CGFloat = 3
+
+    @MainActor static func laundry(front: Bool) -> Art {
+        cached(front ? "laundryFront" : "laundryBack") {
+            let rows = [
+                "......BBBB....EEE.....",
+                "....BBBBBBB.EEEEEE....",
+                "..PPPBBBBBBBEEEEEEVV..",
+                ".PPPPPBBBZZBBEEEEVVVV.",
+                "PPPPPPPBZZZBEEEEVVVVVV",
+                "PPPPVVVVBBBBBBBEEEVVVV",
+                "PPVVVVVVVBBBZZBBBEEEVV",
+                "VVVVVVPPPPPPPPBBBBBBBB",
+            ]
+            var c = PixelCanvas(width: laundryWidth + 2, height: rows.count + 2)
+            if front {
+                c.draw(Array(rows[4...]), at: 1, 5, kind: .body, outline: .hard)
+            } else {
+                c.draw(rows, at: 1, 1, kind: .body, outline: .hard)
+            }
+            return c
+        }
+    }
+
+    static let potWidth = 14
+    static let potNapLift: CGFloat = 4
+
+    /// A potted plant. When a cat naps in it the plant is squashed flat.
+    @MainActor static func flowerPot(squashed: Bool, front: Bool) -> Art {
+        cached("pot\(squashed)\(front)") {
+            let plant = squashed ? [
+                "..............",
+                "..............",
+                "..............",
+                "..............",
+                "..............",
+                "..............",
+                ".jJJj....jJJj.",
+                "jJJJJj..jJJJJj",
+            ] : [
+                "......X.......",
+                ".....jJJj.....",
+                "..jj.jJJj.jj..",
+                ".jJJj.JJ.jJJj.",
+                "..jJJjJJjJJj..",
+                "....jJJJJj....",
+                "......JJ......",
+                "......JJ......",
+            ]
+            let pot = [
+                "FFFFFFFFFFFFFF",
+                ".QQQQQQQQQQQQ.",
+                ".QQQQQQQQQQQQ.",
+                "..QQQQQQQQQQ..",
+                "..QQQQQQQQQQ..",
+                "...qqqqqqqq...",
+            ]
+            var c = PixelCanvas(width: potWidth + 2, height: plant.count + pot.count + 2)
+            if front {
+                c.draw(pot, at: 1, 1 + plant.count, kind: .body, outline: .hard)
+            } else {
+                c.draw(plant, at: 1, 1, kind: .head, outline: .soft)
+                c.draw(["SSSSSSSSSSSSSS"], at: 1, plant.count, kind: .body, outline: .none)
+                c.draw(pot, at: 1, 1 + plant.count, kind: .body, outline: .hard)
+            }
+            return c
+        }
+    }
+
+    static let wardrobeWidth = 26
+    static let wardrobeHeight = 38
+    static let wardrobeNapLift: CGFloat = 3
+
+    /// A wardrobe with an open bottom shelf a cat can curl up on, and a top it can climb onto.
+    @MainActor static func wardrobe(front: Bool) -> Art {
+        cached(front ? "wardrobeFront" : "wardrobeBack") {
+            let w = wardrobeWidth
+            var rows: [String] = []
+            rows.append(String(repeating: "H", count: w))
+            rows.append(String(repeating: "D", count: w))
+            for i in 0..<20 {
+                let knob = i == 10 ? "x" : "W"
+                rows.append("DD" + String(repeating: "W", count: 9) + knob + "DD" + knob + String(repeating: "W", count: 9) + "DD")
+            }
+            rows.append(String(repeating: "D", count: w))
+            for _ in 0..<11 { rows.append("DD" + String(repeating: "n", count: w - 4) + "DD") }
+            rows.append(String(repeating: "H", count: w))
+            rows.append(String(repeating: "D", count: w))
+            rows.append("bb" + String(repeating: ".", count: w - 4) + "bb")
+            var c = PixelCanvas(width: w + 2, height: rows.count + 2)
+            if front {
+                // The sides and the edge above the open shelf, drawn over a napping cat.
+                let cubby = rows.count - 3 - 11
+                var frame: [String] = [String(repeating: "D", count: w)]
+                for _ in 0..<11 { frame.append("DD" + String(repeating: ".", count: w - 4) + "DD") }
+                frame += Array(rows[(rows.count - 3)...])
+                c.draw(frame, at: 1, 1 + cubby - 1, kind: .body, outline: .none)
             } else {
                 c.draw(rows, at: 1, 1, kind: .body, outline: .hard)
             }

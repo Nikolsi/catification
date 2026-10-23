@@ -84,7 +84,9 @@ struct CharacterSections: View {
         Section("Favourite nap spots") {
             ForEach(shownPlaces) { place in
                 HStack {
-                    slider(place.title, value: placeBinding(place), range: 0...3)
+                    // The very favourite spots get a star.
+                    slider(placeBinding(place).wrappedValue >= 2.5 ? "\(place.title) ★" : place.title,
+                           value: placeBinding(place), range: 0...3)
                     Button {
                         addedPlaces.remove(place)
                         brain.wrappedValue.places[place] = 0
@@ -114,7 +116,7 @@ struct CharacterSections: View {
                 .fixedSize()
                 .disabled(hiddenPlaces.isEmpty)
                 Spacer()
-                Text("1× a usual spot, 3× a firm favourite.")
+                Text("1× a usual spot, ★ the very favourite.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

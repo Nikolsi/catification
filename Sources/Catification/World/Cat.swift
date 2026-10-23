@@ -272,7 +272,9 @@ final class Cat {
         CGPoint(x: x + facingSign * anim.head.dx * pixel, y: y + visualLift + anim.head.dy * pixel)
     }
 
-    private var visualLift: CGFloat { activity == .sleep && bedID != nil ? 2 * pixel : 0 }
+    /// How high a cat napping inside furniture (bed, box, pot…) lies above the floor of it.
+    private var napLift: CGFloat = 0
+    private var visualLift: CGFloat { activity == .sleep && bedID != nil ? napLift : 0 }
 
     private func walkSpeed(_ world: CatWorld) -> CGFloat { 11 * pixel * CGFloat(traits.speed * world.store.speed) }
     private func runSpeed(_ world: CatWorld) -> CGFloat { 38 * pixel * CGFloat(traits.speed * world.store.speed) }
@@ -653,6 +655,11 @@ final class Cat {
         case .high:
             guard let spot = world.highSpot(for: self) else { return false }
             return go(to: spot.surface, x: spot.x, then: .sleep, world: world)
+        case .box, .laundry, .wardrobe, .flowerPot:
+            guard let kind = place.furniture, let spot = world.freeNapFurniture(kind, for: self),
+                  go(to: spot.surface, x: spot.x, then: .sleep, world: world) else { return false }
+            bedID = spot.id
+            return true
         default:
             guard let spot = world.napSpot(place, for: self) else { return false }
             return go(to: spot.surface, x: spot.x, then: .sleep, world: world)
@@ -744,8 +751,9 @@ final class Cat {
         case nil:
             decide(world)
         case .sleep:
-            if let bed = bedID, let b = world.bed(bed), b.surface == surface, abs(b.x - x) < 8 * pixel {
-                x = b.x
+            if let id = bedID, let spot = world.napFurniture(id), spot.info.surface == surface, abs(spot.info.x - x) < 8 * pixel {
+                x = spot.info.x
+                napLift = world.napLift(spot.kind)
                 facingRight = Bool.random()
                 activity = .sleep
                 activityTime = 0
