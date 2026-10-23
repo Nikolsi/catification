@@ -1,0 +1,5 @@
+node_modules/
+out/
+# Written by scripts/record-trailer.sh
+public/*/
+public/banner.gif

@@ -1,0 +1,23 @@
+{
+  "name": "catification-promo",
+  "private": true,
+  "description": "The Catification trailer, composed with Remotion from footage recorded by the app.",
+  "scripts": {
+    "studio": "remotion studio",
+    "render": "remotion render Trailer ../docs/media/trailer.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.538",
+    "@remotion/gif": "4.0.538",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.538"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "5.9.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  }
+}

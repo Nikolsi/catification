@@ -70,6 +70,15 @@ final class NavigatorTests: XCTestCase {
         XCTAssertNil(Navigator.hop(from: a, 0, at: 50, to: b, 0, limits: NavLimits(up: 300, across: 50, margin: 8)))
     }
 
+    func testJumpUpOntoAWindowInFront() {
+        // The window behind is cut exactly where the one in front begins.
+        let back = surface(.window(1), y: 200, 100...372)
+        let front = surface(.window(2), y: 260, 372...600)
+        let hop = Navigator.hop(from: back, 0, at: 200, to: front, 0, limits: limits)
+        XCTAssertEqual(hop?.takeoffX, 368)
+        XCTAssertEqual(hop?.landX, 380)
+    }
+
     // MARK: The default furniture
 
     /// The default layout must let cats climb from the floor to the menu bar and back,

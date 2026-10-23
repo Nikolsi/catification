@@ -73,6 +73,12 @@ final class CatWorld {
     /// Demo recordings confine the world to a "stage" with its own backdrop.
     private(set) var demoStage: CGRect?
     private var backdropLayers: [CALayer] = []
+    private var demoClock: CATextLayer?
+    /// Demo recordings can make the jump formulas bigger, to stay readable in a video on a phone.
+    var demoFormulaScale: CGFloat = 1
+    /// Demo recordings with real windows: cats walk on them even inside a stage, and the
+    /// window list is read every frame so riding a dragged window looks smooth.
+    var demoWindows = false
 
     /// Where cats, toys and butterflies may go. The whole panel, unless a demo stage is set.
     var playArea: CGRect { demoStage ?? CGRect(origin: .zero, size: geo.frame.size) }
@@ -284,7 +290,7 @@ final class CatWorld {
         let tracking = (geo.mode == .screen && store.walkOnWindows) || geo.mode == .desktop || climbingIcons
         guard tracking else { return }
         let riding = cats.contains { $0.surface?.isWindow == true } || ball?.surface?.isWindow == true
-        windowTracker.update(now: now, interval: riding ? 0.08 : 0.3, panelFrame: geo.frame)
+        windowTracker.update(now: now, interval: demoWindows ? 0 : (riding ? 0.08 : 0.3), panelFrame: geo.frame)
         if climbingIcons {
             let onIcon = cats.contains { if case .icon? = $0.surface { return true } else { return false } }
             iconTracker.update(now: now, interval: onIcon ? 0.5 : 2, panelFrame: geo.frame)
@@ -329,7 +335,7 @@ final class CatWorld {
                 }
             }
         }
-        if geo.mode == .screen, store.walkOnWindows, demoStage == nil {
+        if geo.mode == .screen, store.walkOnWindows, demoStage == nil || demoWindows {
             list += windowTracker.surfaces(width: geo.width, below: geo.menuBarY, above: geo.groundY ?? 0,
                                            clearance: 16 * geo.furniturePixel)
         }
@@ -714,6 +720,13 @@ final class CatWorld {
     private var furnitureDragging: Bool {
         if case .furniture? = drag?.target { return true }
         return false
+    }
+
+    /// Demo scenes set furniture before the first frame; apply it right away.
+    func reloadFurnitureForDemo() {
+        syncFurniture()
+        anchors = [:]
+        rebuildSurfaces()
     }
 
     private func syncFurniture() {
@@ -1172,19 +1185,21 @@ final class CatWorld {
 
     /// Confines the world to `stage` (panel coordinates) and paints a backdrop behind it, so a
     /// screen recording shows only the cats. `floor` raises the ground inside the stage.
-    func setDemoStage(_ stage: CGRect, floor: CGFloat, notch: CGRect?) {
+    func setDemoStage(_ stage: CGRect, floor: CGFloat, notch: CGRect?, menuBar: Bool = false, backdrop: Bool = true) {
         demoStage = stage
         if geo.groundY != nil, floor > 0 { geo.groundY = stage.minY + floor }
         for l in backdropLayers { l.removeFromSuperlayer() }
         backdropLayers = []
 
-        let wall = CAGradientLayer()
-        wall.frame = stage
-        wall.colors = [RGB(hex: 0x3B3552).nsColor.cgColor, RGB(hex: 0x262433).nsColor.cgColor]
-        wall.startPoint = CGPoint(x: 0.5, y: 1)
-        wall.endPoint = CGPoint(x: 0.5, y: 0)
-        wall.zPosition = 1
-        backdropLayers.append(wall)
+        if backdrop {
+            let wall = CAGradientLayer()
+            wall.frame = stage
+            wall.colors = [RGB(hex: 0x3B3552).nsColor.cgColor, RGB(hex: 0x262433).nsColor.cgColor]
+            wall.startPoint = CGPoint(x: 0.5, y: 1)
+            wall.endPoint = CGPoint(x: 0.5, y: 0)
+            wall.zPosition = 1
+            backdropLayers.append(wall)
+        }
         if floor > 0 {
             let boards = CALayer()
             boards.frame = CGRect(x: stage.minX, y: stage.minY, width: stage.width, height: floor)
@@ -1194,6 +1209,49 @@ final class CatWorld {
             edge.backgroundColor = RGB(hex: 0x8C6446).nsColor.cgColor
             for l in [boards, edge] { l.zPosition = 2 }
             backdropLayers += [boards, edge]
+        }
+        if menuBar {
+            // A recognisable macOS menu bar, so the cats obviously live on a Mac.
+            let height = geo.menuBarHeight
+            let bar = CALayer()
+            bar.frame = CGRect(x: stage.minX, y: geo.menuBarY, width: stage.width, height: height)
+            bar.backgroundColor = RGB(hex: 0x16151C).nsColor.cgColor
+            bar.zPosition = 1.5
+            backdropLayers.append(bar)
+            let scale = panel.backingScaleFactor
+            @discardableResult
+            func label(_ text: String, x: CGFloat, alignRight: Bool = false, bold: Bool = false) -> CATextLayer {
+                let font = NSFont.systemFont(ofSize: 13, weight: bold ? .bold : .medium)
+                let attributed = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: NSColor(white: 0.92, alpha: 1)])
+                let size = attributed.size()
+                let layer = CATextLayer()
+                layer.string = attributed
+                layer.contentsScale = scale
+                layer.frame = CGRect(x: alignRight ? x - size.width : x, y: geo.menuBarY + (height - size.height) / 2,
+                                     width: ceil(size.width), height: ceil(size.height))
+                layer.zPosition = 1.6
+                backdropLayers.append(layer)
+                return layer
+            }
+            if let apple = NSImage(systemSymbolName: "applelogo", accessibilityDescription: nil)?
+                .withSymbolConfiguration(.init(pointSize: 14, weight: .medium)) {
+                let tinted = NSImage(size: apple.size, flipped: false) { rect in
+                    apple.draw(in: rect)
+                    NSColor(white: 0.92, alpha: 1).set()
+                    rect.fill(using: .sourceAtop)
+                    return true
+                }
+                let layer = CALayer()
+                layer.contents = tinted
+                layer.contentsScale = scale
+                layer.frame = CGRect(x: stage.minX + 14, y: geo.menuBarY + (height - apple.size.height) / 2,
+                                     width: apple.size.width, height: apple.size.height)
+                layer.zPosition = 1.6
+                backdropLayers.append(layer)
+            }
+            label("Finder", x: stage.minX + 40, bold: true)
+            label("File   Edit   View", x: stage.minX + 92)
+            demoClock = label("Tue 9:40", x: stage.maxX - 14, alignRight: true)
         }
         if let notch {
             // The real notch is hardware: on a recording the pixels under it are visible.
@@ -1209,6 +1267,13 @@ final class CatWorld {
         }
         anchors = [:]
         rebuildSurfaces()
+    }
+
+    /// The clock in a demo menu bar ticks over when a recording's story starts: a visible
+    /// sync mark for the trailer script.
+    func tickDemoClock() {
+        guard let clock = demoClock, let text = clock.string as? NSAttributedString else { return }
+        clock.string = NSAttributedString(string: "Tue 9:41", attributes: text.attributes(at: 0, effectiveRange: nil))
     }
 
     // MARK: - Jump calculations
@@ -1251,7 +1316,7 @@ final class CatWorld {
         let nearTop = head.y > geo.height - 60
         let start = CGPoint(x: head.x + .random(in: -34...34), y: head.y + (nearTop ? -.random(in: 10...30) : .random(in: 4...24)))
         addParticle(sprite, at: start, velocity: CGVector(dx: .random(in: -6...6), dy: nearTop ? -10 : 12),
-                    gravity: 0, life: 1.5, pixel: p, wobble: 1.5)
+                    gravity: 0, life: 1.5, pixel: p * demoFormulaScale, wobble: 1.5)
     }
 
     // MARK: - Particles
