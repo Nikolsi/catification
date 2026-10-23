@@ -7,6 +7,8 @@ enum SurfaceID: Hashable {
     case perch(UUID)
     case window(Int)
     case icon(String)
+    /// The top of a tall piece of furniture (the wardrobe).
+    case top(UUID)
 
     var isWindow: Bool {
         if case .window = self { return true }

@@ -7,7 +7,7 @@ import AppKit
 @MainActor
 final class DemoDirector {
     enum Scene: String, CaseIterable {
-        case notch, jump, miss, trash, butterflies, pet, play
+        case notch, jump, miss, trash, butterflies, pet, play, naps
 
         /// How long the recording script should record, in seconds.
         var duration: Double {
@@ -19,6 +19,7 @@ final class DemoDirector {
             case .butterflies: 12
             case .pet: 9
             case .play: 11
+            case .naps: 10
             }
         }
     }
@@ -78,6 +79,21 @@ final class DemoDirector {
         case .play:
             cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
                     CatConfig(name: L("Midnight"), coat: .tuxedo, personality: .playful)]
+        case .naps:
+            // Each cat has one firm favourite spot.
+            let spots: [(CoatPreset, CatPlace, FurnitureKind, CGFloat)] = [
+                (.ginger, .box, .box, 55), (.calico, .laundry, .laundry, 155),
+                (.gray, .flowerPot, .flowerPot, 255), (.tuxedo, .wardrobe, .wardrobe, 370),
+            ]
+            for (coat, place, kind, x) in spots {
+                var cat = CatConfig(name: coat.title, coat: coat, personality: .lazy)
+                var brain = CatBrain.preset(.lazy)
+                brain.places = [place: 3, .bed: 0, .friends: 0]
+                brain.routines = []
+                cat.brain = brain
+                cats.append(cat)
+                furniture.append(Furniture(kind: kind, x: Double(r.minX + x), y: Double(g)))
+            }
         }
         return SettingsStore(transientCats: cats, furniture: furniture, mode: .screen)
     }
@@ -124,6 +140,7 @@ final class DemoDirector {
         case .butterflies: return [r.minX + 110, r.minX + 320]
         case .pet: return [r.midX]
         case .play: return [r.minX + 150, r.minX + 240]
+        case .naps: return [r.minX + 110, r.minX + 210, r.minX + 300, r.minX + 320]
         }
     }
 
@@ -189,6 +206,10 @@ final class DemoDirector {
             at(2.6) { world in self.strokeCursor(over: world.cats.first, in: world, for: 3.8) }
             for t in [6.9, 7.7] {
                 at(t) { world in world.cats.first?.squish(world: world) }
+            }
+        case .naps:
+            at(1.6) { world in
+                for cat in world.cats { cat.goToSleep(world) }
             }
         case .play:
             for t in [1.5, 6.5] {
