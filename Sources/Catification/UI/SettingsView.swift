@@ -55,6 +55,14 @@ private struct CatsTab: View {
                     .disabled(store.selectedCatID == nil)
                     .help("Let the cat go")
                     Spacer()
+                    Button {
+                        let imported = CatProfileFiles.pick()
+                        store.cats += imported
+                        if let last = imported.last { store.selectedCatID = last.id }
+                    } label: {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .help("Import cats from .catprofile files")
                 }
                 .buttonStyle(.borderless)
                 .padding(8)
@@ -130,6 +138,8 @@ private struct CatEditor: View {
                             selection: color($cat.belly), supportsOpacity: false)
                 ColorPicker("Eyes", selection: color($cat.eyes), supportsOpacity: false)
             }
+
+            CharacterSections(cat: $cat)
         }
         .formStyle(.grouped)
     }

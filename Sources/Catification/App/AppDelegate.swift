@@ -51,6 +51,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         menu.addItem(ActionItem(L("Add a Cat")) { [weak self] in
             self?.store.addRandomCat()
         })
+        menu.addItem(ActionItem(L("Import Cats…")) { [weak self] in
+            self?.store.cats += CatProfileFiles.pick()
+        })
         menu.addItem(ActionItem(L("Call Everyone Here")) { [weak self] in
             self?.callCatsToStatusItem(nil)
         })
@@ -134,6 +137,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         menu.addItem(ActionItem(L("Customize…")) { [weak self] in
             self?.openSettings(select: id)
+        })
+        menu.addItem(ActionItem(L("Export…")) { [weak self] in
+            guard let config = self?.store.cats.first(where: { $0.id == id }) else { return }
+            CatProfileFiles.export(config)
         })
         menu.addItem(.separator())
         menu.addItem(ActionItem(L("Let Go (Remove)")) { [weak self] in

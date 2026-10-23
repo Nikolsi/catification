@@ -110,6 +110,13 @@ struct CatConfig: Codable, Identifiable, Hashable {
     var pattern: FurPattern
     var personality: Personality
     var size: CatSize
+    /// The owner's own words about this cat: its story, quirks, what it loves.
+    var about = ""
+    /// A customised character. Nil means "behave like the personality preset".
+    var brain: CatBrain?
+
+    /// The character the cat actually runs on.
+    var effectiveBrain: CatBrain { brain ?? .preset(personality) }
 
     var appearance: CatAppearance {
         CatAppearance(fur: fur, secondary: secondary, belly: belly, eyes: eyes, pattern: pattern)
@@ -124,6 +131,26 @@ struct CatConfig: Codable, Identifiable, Hashable {
         pattern = coat.pattern
         self.personality = personality
         self.size = size
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, fur, secondary, belly, eyes, pattern, personality, size, about, brain
+    }
+
+    // Written out so cats saved by older versions (without `about` and `brain`) still load.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        name = try c.decode(String.self, forKey: .name)
+        fur = try c.decode(RGB.self, forKey: .fur)
+        secondary = try c.decode(RGB.self, forKey: .secondary)
+        belly = try c.decode(RGB.self, forKey: .belly)
+        eyes = try c.decode(RGB.self, forKey: .eyes)
+        pattern = try c.decode(FurPattern.self, forKey: .pattern)
+        personality = try c.decode(Personality.self, forKey: .personality)
+        size = try c.decode(CatSize.self, forKey: .size)
+        about = try c.decodeIfPresent(String.self, forKey: .about) ?? ""
+        brain = try c.decodeIfPresent(CatBrain.self, forKey: .brain)
     }
 
     mutating func apply(_ coat: CoatPreset) {
