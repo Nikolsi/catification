@@ -50,6 +50,13 @@ scripts/record-demos.sh jump trash  # just some
 - Your terminal needs the Screen Recording permission. Don't touch the mouse while recording: the
   `pet` scene moves the cursor itself, and the others park it off-stage.
 
+## Releasing (maintainer)
+
+1. In `CHANGELOG.md`, rename `## Unreleased` to the new version, e.g. `## 0.2.0`. Show off new features with their demo GIFs as plain images (`![…](docs/media/demo-naps.gif)`).
+2. Preview the notes: `scripts/release-notes.sh 0.2.0 Nikolsi/catification v0.2.0`.
+3. Merge that through a PR, then tag `main`: `git tag -a v0.2.0 -m "Catification 0.2.0" && git push origin v0.2.0`.
+4. The release workflow builds the app, attaches the zip and checksums, and drafts the release with those notes. GIF links are pinned to the tag. Check the draft, then publish it.
+
 ## Translations
 
 User-facing strings use their English text as the key:
