@@ -29,6 +29,10 @@ make sprites    # every animation of every coat in .preview/sprites.png
 
 Sprites are ASCII grids. Letters are colour *roles*, not colours: `F` fur, `S` stripes, `D` far-side fur, `B` belly and paws, `P` pink, `E` eyes, `K` ink. Outlines are added automatically. After changing art, run `make sprites` and look at the sheet.
 
+Where the code is heading: the simulation is slowly becoming a Swift library that doesn't depend on AppKit,
+with the Mac app as its first platform adapter. See [docs/architecture/engine-strategy.md](docs/architecture/engine-strategy.md).
+New simulation code that doesn't need AppKit is easier to move later.
+
 ## Demo recordings
 
 The GIFs in the README are recorded from scripted scenes, so they're easy to redo when behaviour
