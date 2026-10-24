@@ -23,7 +23,7 @@ final class DemoDirector {
             case .naps: 10
             case .poses: 22
             case .ambush: 15.5
-            case .drink: 10
+            case .drink: 25
             case .trailer: 22
             case .windows: 20
             }
@@ -122,7 +122,14 @@ final class DemoDirector {
             cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
                     CatConfig(name: L("Smokey"), coat: .gray, personality: .lazy)]
         case .drink:
-            cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful)]
+            // One cat drinks standing up; the other lies down by the fountain to drink, then naps hugging it.
+            var hugger = CatConfig(name: L("Smokey"), coat: .gray, personality: .lazy)
+            var brain = CatBrain.preset(.lazy)
+            brain.drinksLyingDown = true
+            brain.places = [.fountain: 3, .bed: 0, .friends: 0]
+            brain.routines = []
+            hugger.brain = brain
+            cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful), hugger]
             furniture = [Furniture(kind: .fountain, x: Double(r.minX + 200), y: Double(g)),
                          Furniture(kind: .bowl, x: Double(r.minX + 240), y: Double(g))]
         case .poses:
@@ -414,7 +421,7 @@ final class DemoDirector {
         case .windows: return []
         case .poses: return [r.minX + 60, r.minX + 160, r.minX + 270, r.minX + 380]
         case .ambush: return [r.minX + 150, r.minX + 230]
-        case .drink: return [r.minX + 90]
+        case .drink: return [r.minX + 140, r.minX + 265]
         case .trailer:
             guard let stage = world?.demoStage else { return [] }
             return [stage.minX + 40, stage.minX + 130]
@@ -489,6 +496,17 @@ final class DemoDirector {
             }
         case .drink:
             at(1.2) { world in world.cats.first?.perform(.drink, world: world) }
+            // The playful one would rather pounce on the other: it steps aside, sits and watches instead.
+            at(8) { world in world.cats.first?.go(to: .ground, x: r.minX + 115, then: .sit, world: world) }
+            at(10) { world in world.cats.first?.begin(.sit, for: 30) }
+            at(9) { world in
+                guard world.cats.count > 1 else { return }
+                world.cats[1].perform(.drink, world: world)
+            }
+            at(20) { world in
+                guard world.cats.count > 1 else { return }
+                world.cats[1].goToSleep(world)
+            }
         case .ambush:
             // A sleeping cat, a sneaky one, a pounce, a fight cloud, and a very cross cat.
             at(0.8) { world in

@@ -3,7 +3,7 @@ import AppKit
 enum Anim: CaseIterable {
     case stand, blink, squish, walk, run, jump, crouch, crouchUp, swipe, sit, sitBlink, petted, groom, sleep, dangle
     case hang, climb, scratch, eat, peek
-    case sleepCurled, sleepSploot, sleepBelly, yawn, stretch, stalk, drink
+    case sleepCurled, sleepSploot, sleepBelly, yawn, stretch, stalk, drink, drinkLying
 
     var fps: Double {
         switch self {
@@ -29,6 +29,7 @@ enum Anim: CaseIterable {
         // Slower than walking, still 1px per frame so the paws don't slide.
         case .stalk: 7
         case .drink: 4
+        case .drinkLying: 3
         case .dangle: 2.5
         case .blink, .squish, .jump, .sitBlink: 1
         }
@@ -53,6 +54,7 @@ enum Anim: CaseIterable {
         case .stretch: (6, 8)
         case .stalk: (5, 9)
         case .drink: (5, 10)
+        case .drinkLying: (5, 9)
         case .dangle: (-1, 14)
         }
     }
@@ -387,6 +389,15 @@ enum CatArt {
         f[.stretch] = [stretching(eyes: .closed), stretching(eyes: .yawnWide)]
         // Lapping at a fountain: the chin at the height of its bowl, bobbing.
         f[.drink] = [5, 6].map { standing(eyes: .closed, tail: tailUpA, legs: baseLegs, headY: $0) }
+        // Lying by the fountain, a paw round it, neck stretched up to the bowl.
+        f[.drinkLying] = [5, 6].map { headY in
+            var c = PixelCanvas(width: W, height: H)
+            c.draw(sleepBody, at: 5, 12, kind: .body)
+            c.tail(tailSleep.map { ($0.0 - 1, $0.1) }, outline: .hard)
+            c.draw(head(.closed), at: 14, headY, kind: .head, outline: .hard)
+            c.draw(["FFFFBB"], at: 18, 14, kind: .arm, outline: .hard)
+            return c
+        }
         // Creeping up on someone: low body, head down, tail low.
         func low(_ tail: [(Int, Int)], _ legs: [Leg]) -> PixelCanvas {
             standing(tail: tail, legs: legs, bodyY: 10, headY: 7, legY: 15, legHeight: 2)

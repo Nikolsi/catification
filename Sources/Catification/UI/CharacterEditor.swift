@@ -124,6 +124,7 @@ struct CharacterSections: View {
                 Text("Any way").tag(SleepPose?.none)
                 ForEach(SleepPose.allCases) { Text($0.title).tag(SleepPose?.some($0)) }
             }
+            Toggle("Drinks lying down by the fountain", isOn: brain.drinksLyingDown)
         }
 
         Section {

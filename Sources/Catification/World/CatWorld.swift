@@ -571,6 +571,12 @@ final class CatWorld {
             return surfaceUnder(mouse).flatMap { beside($0.x, on: $0.surface) }
         case .bowl:
             return nearestBowl(for: cat).flatMap { beside($0.x, on: $0.surface) }
+        case .fountain:
+            // Paws stretched round it, the head beside it so the fountain stays in view.
+            return nearestFountain(for: cat).map { spot in
+                let side: CGFloat = cat.x < spot.x ? -1 : 1
+                return (spot.surface, clampOnSurface(spot.x + side * 13 * cat.pixel, spot.surface, for: cat))
+            }
         case .trash:
             return furniture.filter { $0.kind == .trash }.compactMap { self.place($0.id, kind: .trash) }.randomElement(using: &Sim.rng)
                 .flatMap { beside($0.x, on: $0.surface) }

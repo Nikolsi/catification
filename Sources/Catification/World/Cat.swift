@@ -759,6 +759,7 @@ final class Cat {
 
     func goToSleep(_ world: CatWorld, here: Bool = false) {
         guard canInteract, surface != nil else { return }
+        huggingFountain = false
         partner = nil
         huntKind = nil
         if !here {
@@ -791,6 +792,7 @@ final class Cat {
 
     /// Goes to a kind of place, to sleep there (or, for recipes, to sit).
     private func nap(at place: CatPlace, _ world: CatWorld, then next: Activity = .sleep) -> Bool {
+        huggingFountain = place == .fountain && next == .sleep
         switch place {
         case .bed:
             guard let bed = world.freeBed(for: self), go(to: bed.surface, x: bed.x, then: next, world: world) else { return false }
@@ -828,6 +830,8 @@ final class Cat {
     // MARK: - Looks
 
     private var sleepPose: SleepPose = .loaf
+    /// Off to nap right up against the water fountain, paws stretched round it.
+    private var huggingFountain = false
     /// Demo recordings: always sleep like this.
     var demoPose: SleepPose?
     /// Seconds left of a yawn (sitting, or just before lying down) and of a stretch (after waking).
@@ -840,6 +844,10 @@ final class Cat {
     private func choosePose(inFurniture: Bool) {
         if let demoPose {
             sleepPose = demoPose
+            return
+        }
+        if huggingFountain {
+            sleepPose = .sploot
             return
         }
         let options: [(SleepPose, Double)] = inFurniture
@@ -1277,8 +1285,8 @@ final class Cat {
         guard let fountain = world.nearestFountain(for: self) else { return false }
         let side: CGFloat = x < fountain.x ? -1 : 1
         drinkingAt = fountain.id
-        // Close enough for the head to reach over the fountain's bowl.
-        return go(to: fountain.surface, x: fountain.x + side * 7 * pixel, then: .drinking, world: world)
+        // Drinking from the edge of the bowl, so the fountain stays in view (lying down, a paw round it).
+        return go(to: fountain.surface, x: fountain.x + side * (brain.drinksLyingDown ? 13 : 11) * pixel, then: .drinking, world: world)
     }
 
     private func startDrinking(_ world: CatWorld) {
@@ -1288,7 +1296,8 @@ final class Cat {
             return
         }
         face(fountain.x)
-        begin(.drinking, for: .random(in: 3...5, using: &Sim.rng))
+        // Lying down to drink takes longer: there's no hurry.
+        begin(.drinking, for: brain.drinksLyingDown ? .random(in: 6...10, using: &Sim.rng) : .random(in: 3...5, using: &Sim.rng))
     }
 
     private func drink(_ dt: Double, _ world: CatWorld) {
@@ -1900,7 +1909,7 @@ final class Cat {
         case .climbing: return .climb
         case .scratching: return .scratch
         case .eating: return .eat
-        case .drinking: return .drink
+        case .drinking: return brain.drinksLyingDown ? .drinkLying : .drink
         case .hunting:
             if huntMoving { return .run }
             return huntKind == .butterfly ? .crouchUp : .crouch

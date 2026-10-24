@@ -13,9 +13,10 @@
 
 ![A cat sneaks up on a sleeping friend and pounces; a cartoon fight cloud tumbles back and forth; they spring apart and the woken cat is cross](docs/media/demo-ambush.gif)
 
-![A cat walks over to a water fountain and laps at it](docs/media/demo-drink.gif)
+![One cat drinks from the water fountain standing up; another lies down beside it to drink, then naps hugging it](docs/media/demo-drink.gif)
 
 - A water fountain: cats get thirsty (more so after running about), go for a drink, lap with drops flying, then lick their lips or wash. It's in the furniture palette and in the default room next to the bowl. Rituals can use it too (`{ "drink": true }`).
+- Some cats drink lying down, a paw round the fountain ("Drinks lying down by the fountain" in the cat editor), and some like to nap hugging it (a new favourite spot).
 - Rough and tumble: playful cats sometimes end a pounce in a cartoon fight cloud, a tumbling ball of dust in both cats' colours with paws, tails and ears sticking out and "#@!" flying, then dash off in a chase or sit down and wash as if nothing happened.
 - Four ways to sleep: tucked up like a loaf, curled up in a ball, stretched out on the belly, or belly up. Each cat varies, and can have a favourite ("Sleeps" in the cat editor). Sleepy cats yawn, and after a good nap they have a big stretch.
 - Naps last longer and suit the cat: lazy cats sleep about a third of the time, playful ones about a tenth. The "Naps" habit sets how long a cat sleeps, not just how often.
