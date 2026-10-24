@@ -66,6 +66,15 @@ final class WorldTests: XCTestCase {
         XCTAssertGreaterThan(later, early, "first half hour \(early) actions, next hour \(later)")
     }
 
+    /// Playful cats sometimes end a pounce in a rough-and-tumble wrestle.
+    func testPlayfulCatsWrestle() {
+        let report = day(minutes: 30, [CatConfig(name: "Ginger", coat: .ginger, personality: .playful),
+                                       CatConfig(name: "Midnight", coat: .tuxedo, personality: .playful)])
+        let wrestles = report.cats.reduce(0) { $0 + ($1.moments["wrestle"] ?? 0) }
+        XCTAssertGreaterThan(wrestles, 0)
+        XCTAssertGreaterThan(report.cats.reduce(0) { $0 + ($1.seconds["wrestle"] ?? 0) }, 0)
+    }
+
     func testPettingIsCounted() throws {
         let world = World()
         let cat = try XCTUnwrap(world.spawn(character: CatConfig(name: "Ginger", coat: .ginger, personality: .affectionate)))

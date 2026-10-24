@@ -3,7 +3,7 @@ import AppKit
 enum Anim: CaseIterable {
     case stand, blink, squish, walk, run, jump, crouch, crouchUp, swipe, sit, sitBlink, petted, groom, sleep, dangle
     case hang, climb, scratch, eat, peek
-    case sleepCurled, sleepSploot, sleepBelly, yawn, stretch
+    case sleepCurled, sleepSploot, sleepBelly, yawn, stretch, tumble
 
     var fps: Double {
         switch self {
@@ -26,6 +26,7 @@ enum Anim: CaseIterable {
         case .sleepBelly: 0.9
         case .yawn: 3
         case .stretch: 1.4
+        case .tumble: 7
         case .dangle: 2.5
         case .blink, .squish, .jump, .sitBlink: 1
         }
@@ -48,6 +49,7 @@ enum Anim: CaseIterable {
         case .sleepBelly: (7, 4)
         case .yawn: (3, 11)
         case .stretch: (6, 8)
+        case .tumble: (5, 8)
         case .dangle: (-1, 14)
         }
     }
@@ -286,6 +288,59 @@ enum CatArt {
         return c
     }
 
+    // MARK: Rough and tumble
+
+    /// On its back, kicking with the back paws, front paws grabbing.
+    static func tumbleKick(high: Bool) -> PixelCanvas {
+        var c = PixelCanvas(width: W, height: H)
+        c.tail([(5, 16), (4, 16), (3, 15), (2, 15), (1, 14)])
+        c.draw(["BB", "DD", "DD"], at: 9, high ? 10 : 8, kind: .leg)
+        c.draw(["BB", "DD"], at: 15, 10, kind: .leg)
+        c.draw([
+            ".BBBBBBBBBBB.",
+            "FFFFFFFFFFFFF",
+            "FFSFFSFFSFFFF",
+            ".FFFFFFFFFFF.",
+        ], at: 5, 13, kind: .body)
+        c.draw(["BB", "FF", "FF"], at: 6, high ? 8 : 10, kind: .leg, outline: .hard)
+        c.draw(["BB", "FF"], at: 13, 11, kind: .leg, outline: .hard)
+        c.draw(Array(head(.squint).reversed()), at: 16, 10, kind: .head, outline: .hard)
+        return c
+    }
+
+    /// Mid-roll in a ball, paws sticking out every way.
+    static func tumbleRoll() -> PixelCanvas {
+        var c = PixelCanvas(width: W, height: H)
+        c.tail([(4, 12), (3, 11), (2, 11), (1, 10), (1, 9)])
+        c.draw(["BB", "DD"], at: 5, 7, kind: .leg)
+        c.draw([
+            "...FFFFFF...",
+            ".FFSFFSFFFF.",
+            "FFFFSFFSFFFF",
+            "FFFFFFFFFFFF",
+            "FFFFFFFFFFFF",
+            ".FFFFFFFFFF.",
+        ], at: 4, 10, kind: .body)
+        c.draw(["BB", "FF"], at: 8, 7, kind: .leg, outline: .hard)
+        c.draw(head(.open), at: 12, 7, kind: .head, outline: .hard)
+        c.draw(["FFFBB"], at: 19, 12, kind: .arm, outline: .hard)
+        c.draw(["FFBB"], at: 17, 15, kind: .arm, outline: .hard)
+        return c
+    }
+
+    /// Up on the back legs, boxing with the front paws.
+    static func tumbleBox(leftUp: Bool) -> PixelCanvas {
+        var c = PixelCanvas(width: W, height: H)
+        c.tail([(15, 15), (16, 16), (17, 16), (18, 15)])
+        c.draw(legRows(far: false, height: 3), at: 10, 14, kind: .leg)
+        c.draw(legRows(far: false, height: 3), at: 13, 14, kind: .leg)
+        c.draw(hangBody, at: 9, 8, kind: .body)
+        c.draw(head(.squint), at: 8, 2, kind: .head, outline: .hard)
+        c.draw(["B", "F", "F"], at: 7, leftUp ? 3 : 6, kind: .arm, outline: .hard)
+        c.draw(["B", "F", "F"], at: 17, leftUp ? 6 : 3, kind: .arm, outline: .hard)
+        return c
+    }
+
     static func dangling(swing: Bool) -> PixelCanvas {
         var c = PixelCanvas(width: W, height: H)
         c.tail(swing ? tailHangB : tailHangA)
@@ -380,6 +435,8 @@ enum CatArt {
         f[.yawn] = [sitting(eyes: .closed, tail: tailSitA), sitting(eyes: .yawn, tail: tailSitA),
                     sitting(eyes: .yawnWide, tail: tailSitB), sitting(eyes: .yawn, tail: tailSitB)]
         f[.stretch] = [stretching(eyes: .closed), stretching(eyes: .yawnWide)]
+        let kick = tumbleKick(high: true), kick2 = tumbleKick(high: false), roll = tumbleRoll()
+        f[.tumble] = [kick, kick2, kick, roll, tumbleBox(leftUp: true), tumbleBox(leftUp: false), roll, kick2]
         return f
     }()
 

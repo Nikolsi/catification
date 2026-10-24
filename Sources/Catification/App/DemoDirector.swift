@@ -67,8 +67,9 @@ final class DemoDirector {
 
     init(scene: Scene) {
         self.scene = scene
-        // Before any cat exists, so the same scene plays out the same way every time.
-        Sim.seed(Sim.commandLineSeed ?? 1, start: Self.date)
+        // Before any cat exists, so the same scene plays out the same way every time. The play
+        // scene's seed is one where the cats end up wrestling.
+        Sim.seed(Sim.commandLineSeed ?? (scene == .play ? 5 : 1), start: Self.date)
     }
 
     /// Scenes happen on a Tuesday at 9:40, like the clock in their menu bar says.

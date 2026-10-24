@@ -6,7 +6,7 @@ final class Cat {
     enum Activity {
         case stand, sit, groom, sleep
         case walk, run
-        case chase, flee, crouch, pounce, swipe
+        case chase, flee, crouch, pounce, swipe, wrestle
         case petted, greet
         case carried, falling
         case calculating, jumping, hanging, climbing, scratching, eating, hunting, rummaging
@@ -343,6 +343,8 @@ final class Cat {
             guard let p = partner, p.isPlayable, p.surface == surface else { endPlay(); break }
             face(p.x)
             if activityTime >= activityDuration { pounce(at: p.x, world: world) }
+        case .wrestle:
+            wrestle(dt, world)
         case .pounce, .falling, .jumping:
             fly(dt: dt, world: world)
         case .calculating:
@@ -378,7 +380,7 @@ final class Cat {
     private func tickStats(_ dt: Double, world: CatWorld) {
         switch activity {
         case .sleep: energy += 0.03 * dt
-        case .run, .chase, .flee, .pounce, .jumping, .climbing, .hunting, .rummaging: energy -= 0.01 * dt
+        case .run, .chase, .flee, .pounce, .jumping, .climbing, .hunting, .rummaging, .wrestle: energy -= 0.01 * dt
         case .walk: energy -= 0.0035 * dt
         default: energy -= 0.0012 * dt
         }
@@ -386,7 +388,7 @@ final class Cat {
 
         let needs = brain.needs
         switch activity {
-        case .chase, .flee, .crouch, .pounce, .greet, .petted: social -= 0.06 * dt
+        case .chase, .flee, .crouch, .pounce, .greet, .petted, .wrestle: social -= 0.06 * dt
         case .sleep: break
         default: social += needs.socialRate * dt
         }
@@ -1137,9 +1139,13 @@ final class Cat {
             if huntKind != nil {
                 begin(.hunting)
             } else if let p = partner, p.isPlayable, p.surface == surface, abs(p.x - x) < 34 * pixel {
-                let d = Double.random(in: 2.5...5, using: &Sim.rng)
-                p.startFlee(from: self, duration: d, world: world)
-                begin(.chase, for: d)
+                if Double.random(in: 0..<1, using: &Sim.rng) < min(0.8, 0.35 * traits.playfulness) {
+                    startWrestle(with: p, world: world)
+                } else {
+                    let d = Double.random(in: 2.5...5, using: &Sim.rng)
+                    p.startFlee(from: self, duration: d, world: world)
+                    begin(.chase, for: d)
+                }
             } else {
                 endPlay()
             }
@@ -1504,6 +1510,67 @@ final class Cat {
         }
     }
 
+    // MARK: Rough and tumble
+
+    /// Where a wrestling pair rolls around, and which of the two started it.
+    private var wrestleCentre: CGFloat = 0
+    private var wrestleSide: CGFloat = 1
+    private var startedWrestle = false
+    private var flipTimer = 0.0
+    /// Frames this cat's animation runs ahead, so a wrestling pair isn't in step.
+    private var animOffset = 0
+
+    private func startWrestle(with mate: Cat, world: CatWorld) {
+        let duration = Double.random(in: 2.2...3.6, using: &Sim.rng)
+        let centre = (x + mate.x) / 2
+        let side: CGFloat = x < mate.x ? -1 : 1
+        for (cat, s, starter) in [(self, side, true), (mate, -side, false)] {
+            cat.partner = cat === self ? mate : self
+            cat.route = nil
+            cat.routeThen = nil
+            cat.wrestleCentre = centre
+            cat.wrestleSide = s
+            cat.startedWrestle = starter
+            cat.animOffset = starter ? 0 : 3
+            // The one who started it sorts out the ending, so the other one waits a little longer.
+            cat.begin(.wrestle, for: starter ? duration : duration + 1)
+        }
+        world.note("wrestle", cat: self)
+    }
+
+    private func wrestle(_ dt: Double, _ world: CatWorld) {
+        guard let p = partner, p.activity == .wrestle, p.surface == surface, let s = surface else {
+            animOffset = 0
+            relaxAfterPlay()
+            return
+        }
+        // Rolling back and forth together, a few pixels apart.
+        let roll = CGFloat(sin((startedWrestle ? activityTime : p.activityTime) * 4.5)) * 7 * pixel
+        x = world.clampOnSurface(wrestleCentre + roll + wrestleSide * 4 * pixel, s, for: self)
+        flipTimer -= dt
+        if flipTimer <= 0 {
+            // Every so often they roll over: the cats swap the way they face.
+            flipTimer = .random(in: 0.3...0.6, using: &Sim.looks)
+            facingRight = Bool.random(using: &Sim.looks) ? wrestleSide < 0 : wrestleSide > 0
+        }
+        if startedWrestle, Double.random(in: 0..<1, using: &Sim.looks) < dt * 4 {
+            world.spawnFluff(at: CGPoint(x: wrestleCentre + roll + .random(in: -8...8, using: &Sim.looks) * pixel, y: y + 6 * pixel))
+        }
+        guard startedWrestle, activityTime >= activityDuration else { return }
+        animOffset = 0
+        p.animOffset = 0
+        if Double.random(in: 0..<1, using: &Sim.rng) < 0.6, energy > 0.25, p.energy > 0.25 {
+            // Off they go: one runs, the other gives chase.
+            let d = Double.random(in: 2...4, using: &Sim.rng)
+            p.startFlee(from: self, duration: d, world: world)
+            begin(.chase, for: d)
+        } else {
+            // As if nothing happened.
+            p.relaxAfterPlay()
+            relaxAfterPlay()
+        }
+    }
+
     private func endPlay() {
         partner = nil
         route = nil
@@ -1727,6 +1794,7 @@ final class Cat {
         case .calculating: return calcLooksUp ? .crouchUp : .crouch
         case .pounce, .falling, .jumping: return .jump
         case .swipe: return .swipe
+        case .wrestle: return .tumble
         case .petted, .greet: return .petted
         case .carried: return .dangle
         case .hanging: return .hang
@@ -1749,7 +1817,7 @@ final class Cat {
             anim = a
             animTime = 0
         }
-        let index = Int(animTime * a.fps) % sheet.frameCount(a)
+        let index = (Int(animTime * a.fps) + animOffset) % sheet.frameCount(a)
         let image = sheet.image(a, index, facingRight: facingRight)
         if image !== shownImage {
             layer.contents = image
