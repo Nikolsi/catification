@@ -11,6 +11,10 @@ import AppKit
 @MainActor
 final class World {
     let report = DayReport()
+    /// Someone looks after the cats: an empty bowl gets filled after a few minutes. Without that,
+    /// hungry cats end up waiting by the bowl, as they would at home.
+    var feedsCats = true
+    private var bowlEmptySince: Double?
     private var state: Sim.State
     private let store: SettingsStore
     private let world: CatWorld
@@ -70,6 +74,23 @@ final class World {
         Sim.run(in: &state) {
             let dt = Sim.advance(realDelta: deltaTime)
             world.step(dt)
+            if feedsCats { lookAfterTheBowls() }
+        }
+    }
+
+    /// Fills the bowls, as the owner does from the menu.
+    func fillBowls() {
+        Sim.run(in: &state) { world.refillBowls() }
+    }
+
+    private func lookAfterTheBowls() {
+        let empty = world.furniture.contains { $0.kind == .bowl && $0.food < 0.2 }
+        guard empty else { return bowlEmptySince = nil }
+        let since = bowlEmptySince ?? Sim.time
+        bowlEmptySince = since
+        if Sim.time - since > 300 {
+            world.refillBowls()
+            bowlEmptySince = nil
         }
     }
 

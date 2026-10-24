@@ -287,7 +287,12 @@ final class Cat {
 
     private func walkSpeed(_ world: CatWorld) -> CGFloat { 11 * pixel * CGFloat(traits.speed * world.store.speed) }
     private func runSpeed(_ world: CatWorld) -> CGFloat { 38 * pixel * CGFloat(traits.speed * world.store.speed) }
-    private var sleepDuration: Double { Double.random(in: 18...40, using: &Sim.rng) * (0.6 + 0.4 * traits.laziness) }
+    /// How sleepy this cat is: its napping habit (the personality's laziness, unless customised).
+    private var sleepiness: Double { max(0.2, brain.habit(.nap)) }
+    /// Lazy cats sleep long, playful ones nap briefly.
+    private var sleepDuration: Double { Double.random(in: 25...55, using: &Sim.rng) * pow(sleepiness, 1.5) }
+    /// A rested cat wakes up early, unless it's a sleepy one.
+    private var restedWakeAfter: Double { 20 * sleepiness }
 
     // MARK: - Simulation
 
@@ -315,7 +320,7 @@ final class Cat {
                 if huntKind != nil { begin(.hunting) } else { decide(world) }
             }
         case .sleep:
-            if !demoNoWake, activityTime >= activityDuration || (!sleepsItOut && energy >= 1 && activityTime > 12) {
+            if !demoNoWake, activityTime >= activityDuration || (!sleepsItOut && energy >= 1 && activityTime > restedWakeAfter) {
                 wakeUp()
                 react(to: .wokeUp, world: world)
             }
