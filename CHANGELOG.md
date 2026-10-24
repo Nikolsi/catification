@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Easier to see
+
+![The same sleeping cats five times: as before, with a soft shadow, a light sticker, a sticker and a glow](docs/media/standout.png)
+
+- "Stand out" in settings: a light ring and a soft shadow behind cats, furniture and toys, so they don't get lost among menu bar icons or on a bright wallpaper. Off, soft shadow, light sticker (the default), sticker or glow.
+
 ### Cats with character
 
 - Cat character as data: habits, needs (company and curiosity), favourite nap spots, a daily routine and reactions to events, edited in the cat editor. The built-in personalities are presets that behave exactly as before.

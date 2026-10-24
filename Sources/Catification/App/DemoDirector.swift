@@ -177,7 +177,13 @@ final class DemoDirector {
                 furniture.append(Furniture(kind: kind, x: Double(r.minX + x), y: Double(g)))
             }
         }
-        return SettingsStore(transientCats: cats, furniture: furniture, mode: .screen)
+        let store = SettingsStore(transientCats: cats, furniture: furniture, mode: .screen)
+        // `--standout sticker` and so on, to compare the styles in a recording.
+        if let i = CommandLine.arguments.firstIndex(of: "--standout"), CommandLine.arguments.count > i + 1,
+           let style = Standout(rawValue: CommandLine.arguments[i + 1]) {
+            store.standout = style
+        }
+        return store
     }
 
     // MARK: Running the scene

@@ -82,6 +82,13 @@ final class Ball {
         y = newY
     }
 
+    private let halo = HaloLayer()
+
+    func removeLayers() {
+        halo.remove()
+        layer.removeFromSuperlayer()
+    }
+
     func sync() {
         let frame = Int(abs(roll) / (pixel * 3)) % 3
         if frame != shownFrame {
@@ -92,7 +99,10 @@ final class Ball {
         }
         // The yarn's lowest pixel is one row above the canvas bottom.
         layer.position = CGPoint(x: (x * 2).rounded() / 2, y: ((y - pixel) * 2).rounded() / 2)
+        halo.update(behind: layer, image: layer.contents.map { $0 as! CGImage }, pixel: pixel, style: standout)
     }
+
+    var standout: Standout = .lightSticker
 }
 
 /// A cat working out a jump: a dotted parabola drawn bit by bit, and a target mark.
@@ -180,6 +190,7 @@ final class FurnitureView {
     /// The front rim of a bed, drawn over a cat sleeping in it.
     let front = CALayer()
     let outline = CAShapeLayer()
+    private let halo = HaloLayer()
     private var key = ""
     private(set) var frame: CGRect = .zero
 
@@ -201,7 +212,8 @@ final class FurnitureView {
         root.addSublayer(outline)
     }
 
-    func update(art: PropArt.Art, front frontArt: PropArt.Art?, origin: CGPoint, pixel: CGFloat, z: CGFloat, key newKey: String) {
+    func update(art: PropArt.Art, front frontArt: PropArt.Art?, origin: CGPoint, pixel: CGFloat, z: CGFloat, key newKey: String,
+                standout: Standout) {
         if newKey != key {
             main.contents = art.image
             front.contents = frontArt?.image
@@ -217,6 +229,11 @@ final class FurnitureView {
         front.position = o
         front.zPosition = 8
         frame = CGRect(origin: o, size: size)
+        halo.update(behind: main, image: art.image, pixel: pixel, style: standout, visible: !main.isHidden)
+    }
+
+    func hideHalo(_ standout: Standout) {
+        halo.update(behind: main, image: nil, pixel: 1, style: standout, visible: false)
     }
 
     func showOutline(_ show: Bool, handles: [CGRect]) {
@@ -229,6 +246,7 @@ final class FurnitureView {
     }
 
     func remove() {
+        halo.remove()
         main.removeFromSuperlayer()
         front.removeFromSuperlayer()
         outline.removeFromSuperlayer()

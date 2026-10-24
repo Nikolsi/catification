@@ -285,3 +285,12 @@
 "On the chair with clothes" = "На стуле с одеждой";
 "Wash the laundry" = "Постирать бельё";
 "In the laundry basket" = "В корзине с бельём";
+
+/* Standing out */
+"Stand out" = "Выделять";
+"Soft shadow" = "Мягкая тень";
+"Light sticker" = "Лёгкий стикер";
+"Sticker" = "Стикер";
+"Glow" = "Свечение";
+"A light ring or a shadow behind cats and furniture, so they don't get lost on a busy menu bar or a bright wallpaper." = "Светлая обводка или тень за котиками и мебелью, чтобы они не терялись среди иконок в строке меню и на ярких обоях.";
+"Off" = "Выключено";

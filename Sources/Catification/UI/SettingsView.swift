@@ -197,6 +197,12 @@ private struct GeneralTab: View {
             Section("Cats") {
                 Toggle("Show cats", isOn: $store.catsVisible)
                 Toggle("Mood bubbles", isOn: $store.moodEmotes)
+                Picker("Stand out", selection: $store.standout) {
+                    ForEach(Standout.allCases) { Text($0.title).tag($0) }
+                }
+                Text("A light ring or a shadow behind cats and furniture, so they don't get lost on a busy menu bar or a bright wallpaper.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 LabeledContent("Speed") {
                     Slider(value: $store.speed, in: 0.5...2) {
                         EmptyView()
