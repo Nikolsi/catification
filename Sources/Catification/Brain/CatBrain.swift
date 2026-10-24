@@ -28,7 +28,7 @@ enum CatAction: String, Codable, CaseIterable, CodingKeyRepresentable, Identifia
 
 /// Favourite places, used when a cat picks somewhere to nap.
 enum CatPlace: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiable {
-    case bed, high, friends, perch, shelf, menuBar, floor, windows, cursor, bowl, trash, box, closedBox, laundry, wardrobe, flowerPot, fountain
+    case bed, high, friends, perch, shelf, menuBar, floor, windows, cursor, bowl, trash, box, closedBox, laundry, wardrobe, flowerPot, fountain, cleanLaundry, chair
 
     var id: String { rawValue }
 
@@ -47,28 +47,35 @@ enum CatPlace: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiab
         case .trash: L("By the trash can")
         case .box: L("In an open box")
         case .closedBox: L("On top of a closed box")
-        case .laundry: L("In the pile of laundry")
+        case .laundry: L("In the laundry basket")
         case .wardrobe: L("On the wardrobe's bottom shelf")
         case .flowerPot: L("In the flower pot")
         case .fountain: L("Hugging the water fountain")
+        case .cleanLaundry: L("On the clean laundry")
+        case .chair: L("On the chair with clothes")
         }
     }
 
     /// Furniture this spot is inside of, if any.
-    var furniture: FurnitureKind? {
+    var furniture: [FurnitureKind] {
         switch self {
-        case .bed: .bed
-        case .box: .box
-        case .laundry: .laundry
-        case .wardrobe: .wardrobe
-        case .flowerPot: .flowerPot
-        default: nil
+        case .bed: [.bed]
+        case .box: [.box]
+        case .laundry: [.laundryBasket]
+        case .wardrobe: [.wardrobe]
+        case .flowerPot: [.flowerPot]
+        default: []
         }
     }
 
-    /// An ordinary cat likes its bed and napping next to friends; any other spot is a quirk.
+    /// An ordinary cat likes its bed and napping next to friends, and can't quite resist clean
+    /// laundry; any other spot is a quirk.
     var defaultPreference: Double {
-        self == .bed || self == .friends ? 1 : 0
+        switch self {
+        case .bed, .friends: 1
+        case .cleanLaundry: 0.5
+        default: 0
+        }
     }
 }
 

@@ -56,10 +56,12 @@ struct EditPaletteView: View {
         case .trash: PropArt.trash(front: false).image
         case .box: PropArt.box(front: false).image
         case .closedBox: PropArt.closedBox().image
-        case .laundry: PropArt.laundry(front: false).image
         case .wardrobe: PropArt.wardrobe(front: false).image
         case .flowerPot: PropArt.flowerPot(squashed: false, front: false).image
         case .fountain: PropArt.fountain(frame: 0).image
+        case .laundryStack: PropArt.laundryStack().image
+        case .laundryBasket: PropArt.laundryBasket(front: false).image
+        case .clothesChair: PropArt.clothesChair().image
         }
     }
 }

@@ -27,6 +27,9 @@ enum PropArt {
         "n": RGB(hex: 0x2A2230), "x": RGB(hex: 0xE0B050),
         // Water fountain: white ceramic, its shade, and water
         "z": RGB(hex: 0xC9C3D6), "o": RGB(hex: 0x7FC8F8), "w": RGB(hex: 0xD8F0FF),
+        // Laundry: wicker, dark denim, teal, pale pink, shaded white
+        "i": RGB(hex: 0xE2C28A), "l": RGB(hex: 0xB08A52), "d": RGB(hex: 0x33589A), "t": RGB(hex: 0x4FB8AE),
+        "p": RGB(hex: 0xF6C3D2), "s": RGB(hex: 0xC8C2D2),
     ]
     private static let outline = RGB(hex: 0x3A2216)
 
@@ -157,6 +160,120 @@ enum PropArt {
         }
     }
 
+    // MARK: Laundry
+
+    static let stackWidth = 22
+
+    /// Clean laundry, neatly folded: a towel, a T-shirt, a sweater, and a shirt with its collar on top.
+    /// After a cat has slept on it, `fur` scatters tufts of that cat's coat over it.
+    @MainActor static func laundryStack(fur: RGB? = nil) -> Art {
+        let key = "stack" + (fur.map { "\($0.bytes)" } ?? "")
+        if let art = cache[key] { return art }
+        let canvas = stackCanvas(furred: fur != nil)
+        let image = PixelRenderer.image(canvas) { cell in
+            switch cell.code {
+            case "O": outline
+            case "1": fur
+            case "2": fur?.scaled(0.8)
+            default: palette[cell.code]
+            }
+        }
+        let art = Art(image: image, width: canvas.width, height: canvas.height)
+        cache[key] = art
+        return art
+    }
+
+    private static func stackCanvas(furred: Bool) -> PixelCanvas {
+        let layers: [(Character, Character)] = [("Z", "s"), ("L", "U"), ("p", "P"), ("t", "J")]
+        var c = PixelCanvas(width: stackWidth + 2, height: layers.count * 3 + 3)
+        for (i, (fabric, shade)) in layers.enumerated() {
+            let inset = i == layers.count - 1 ? 1 : 0
+            let w = stackWidth - inset * 2
+            let top = "." + String(repeating: fabric, count: w - 2) + "."
+            let middle = String(repeating: fabric, count: w / 2 - 1) + String(shade) + String(repeating: fabric, count: w - w / 2)
+            let bottom = String(repeating: shade, count: w)
+            c.draw([top, middle, bottom], at: 1 + inset, 1 + (layers.count - 1 - i) * 3 + 1, kind: .body, outline: .hard)
+        }
+        // A collar on the shirt at the top.
+        c.draw(["ZZ.ZZ", ".ZZZ."], at: 1 + stackWidth / 2 - 2, 2, kind: .fx, outline: .none)
+        if furred {
+            // Cat hair everywhere, mostly where it lay on top.
+            let tufts: [(Int, Int, String)] = [
+                (3, 2, "11"), (7, 3, "2"), (9, 2, "1"), (15, 2, "11"), (19, 3, "1"), (10, 4, "22"), (13, 3, "1"), (5, 4, "1"),
+                (17, 4, "2"), (3, 6, "1"), (12, 6, "2"), (20, 7, "2"), (6, 9, "1"), (17, 10, "1"), (2, 12, "2"),
+            ]
+            for (x, y, wisp) in tufts {
+                c.draw([wisp], at: x, y, kind: .fx, outline: .none)
+            }
+        }
+        return c
+    }
+
+    static let basketWidth = 24
+    static let basketNapLift: CGFloat = 4
+
+    /// A wicker laundry basket, clothes spilling over the rim. The front hides a napping cat's lower half.
+    @MainActor static func laundryBasket(front: Bool) -> Art {
+        cached(front ? "basketFront" : "basketBack") {
+            var body = ["llllllllllllllllllllllll"]
+            for row in 0..<7 {
+                let a = row % 2 == 0 ? "iiil" : "liii"
+                var line = String(repeating: a, count: basketWidth / 4)
+                if row == 6 { line = "." + line.dropFirst().dropLast() + "." }
+                body.append(line)
+            }
+            let spill = [
+                "..........EE........ZP..",
+                ".....hZ..EEEE.......PZ..",
+                "...hZhhZhEEEEE....tttZP.",
+                ".hhZhhZhhEEEEEEtttttttt.",
+            ]
+            var c = PixelCanvas(width: basketWidth + 2, height: body.count + spill.count + 4)
+            if !front {
+                c.draw(spill, at: 1, 1, kind: .leg, outline: .hard)
+            }
+            c.draw(body, at: 1, 1 + spill.count, kind: .body, outline: .hard)
+            // A sleeve and a towel corner hanging over the rim, in front.
+            c.draw(["hZ", "ZZ", "hZ", "ZZ", "hh"], at: 3, 1 + spill.count, kind: .arm, outline: .hard)
+            c.draw(["ttt", "tt.", "t.."], at: 19, 1 + spill.count, kind: .arm, outline: .hard)
+            return c
+        }
+    }
+
+    static let chairWidth = 18
+    /// Height of the heap of clothes on the seat, from the floor, in sprite pixels.
+    static let chairTop = 15
+
+    /// A chair piled with clothes: a shirt over the back, a heap on the seat a cat can sleep on.
+    @MainActor static func clothesChair() -> Art {
+        cached("chair") {
+            var c = PixelCanvas(width: chairWidth + 2, height: 28)
+            // Back legs and backrest, front legs, seat.
+            c.draw(Array(repeating: "WD", count: 25), at: 2, 1, kind: .leg, outline: .hard)
+            c.draw(Array(repeating: "WD", count: 10), at: 16, 16, kind: .leg, outline: .hard)
+            c.draw(["HHHHHHHHHHHHHHHH", "WWWWWWWWWWWWWWWW"], at: 2, 15, kind: .body, outline: .hard)
+            c.draw(["WWW"], at: 2, 5, kind: .body, outline: .hard)
+            // A shirt over the backrest, hanging down both sides.
+            c.draw([
+                ".ttttt.",
+                "tttJttt",
+                "tt...tt",
+                "tt...tt",
+                "tJ...tt",
+                "tt....t",
+                "J.....J",
+            ], at: 0, 1, kind: .arm, outline: .hard)
+            // Clothes heaped on the seat.
+            c.draw([
+                "....PPPPP......",
+                "..BBPPPPPPP.EE.",
+                ".BBBBBBBPPEEEEE",
+                "BBBBBBBBBBBBEEE",
+            ], at: 4, 11, kind: .tail, outline: .hard)
+            return c
+        }
+    }
+
     static let trashWidth = 14
     /// Rows from the bottom of the can to the top of its rim.
     static let trashHeight = 15
@@ -233,54 +350,9 @@ enum PropArt {
         }
     }
 
-    static let laundryWidth = 28
-    static let laundryNapLift: CGFloat = 3
 
     /// A pile of clothes: jeans at the bottom, a striped sweater, a T-shirt and a sock on top.
     /// Each garment has its own outline so they read as separate things.
-    @MainActor static func laundry(front: Bool) -> Art {
-        cached(front ? "laundryFront" : "laundryBack") {
-            let jeans = [
-                "...BBBBBBBBBBBBBBBBBBBBBB...",
-                ".BBBBLBBBBBBBBBBBBBBBLBBBBB.",
-                "BBBBBLBBBBBBBBBBBBBBBLBBBBBB",
-                "BBBBBBBBBBBBB..BBBBBBBBBBBBB",
-            ]
-            let sweater = [
-                ".....hhZZhh....",
-                "...hhZZhhZZhh..",
-                "..hhZZhhZZhhZh.",
-                ".hhZZhhZZhhZZhh",
-                "hhZZhhZZhhZZhh.",
-                "hh.............",
-                "ZZ.............",
-            ]
-            let shirt = [
-                ".....EEEE.......",
-                "..EEEEEEEEEE....",
-                ".EEEEEEEEEEEEE..",
-                "EEEEEEEEEEEEEEE.",
-                "EEEEEEEEEEEEEEEE",
-                ".EEEEEEEEEEEEEE.",
-            ]
-            let sock = [
-                "PP...",
-                "PP...",
-                "PPPZZ",
-            ]
-            var c = PixelCanvas(width: laundryWidth + 2, height: 17)
-            if front {
-                // The jeans in front hide the napping cat's lower half.
-                c.draw(jeans, at: 1, 12, kind: .body, outline: .hard)
-            } else {
-                c.draw(jeans, at: 1, 12, kind: .body, outline: .hard)
-                c.draw(shirt, at: 12, 6, kind: .leg, outline: .hard)
-                c.draw(sweater, at: 1, 5, kind: .arm, outline: .hard)
-                c.draw(sock, at: 13, 2, kind: .tail, outline: .hard)
-            }
-            return c
-        }
-    }
 
     static let potWidth = 22
     static let potNapLift: CGFloat = 6

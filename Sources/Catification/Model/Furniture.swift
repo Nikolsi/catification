@@ -26,7 +26,7 @@ enum WorldMode: String, Codable, CaseIterable, Identifiable {
 }
 
 enum FurnitureKind: String, Codable, CaseIterable, Identifiable {
-    case shelf, post, bed, bowl, trash, box, closedBox, laundry, wardrobe, flowerPot, fountain
+    case shelf, post, bed, bowl, trash, box, closedBox, wardrobe, flowerPot, fountain, laundryStack, laundryBasket, clothesChair
 
     var id: String { rawValue }
 
@@ -39,10 +39,12 @@ enum FurnitureKind: String, Codable, CaseIterable, Identifiable {
         case .trash: L("Trash can")
         case .box: L("Open box")
         case .closedBox: L("Closed box")
-        case .laundry: L("Pile of laundry")
         case .wardrobe: L("Wardrobe")
         case .flowerPot: L("Flower pot")
         case .fountain: L("Water fountain")
+        case .laundryStack: L("Clean laundry")
+        case .laundryBasket: L("Laundry basket")
+        case .clothesChair: L("Chair with clothes")
         }
     }
 
@@ -50,7 +52,16 @@ enum FurnitureKind: String, Codable, CaseIterable, Identifiable {
     var isProp: Bool { self != .shelf && self != .post }
 
     /// Furniture a cat can curl up inside.
-    var isNapSpot: Bool { [.bed, .box, .laundry, .wardrobe, .flowerPot].contains(self) }
+    var isNapSpot: Bool { [.bed, .box, .laundryBasket, .wardrobe, .flowerPot].contains(self) }
+
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        // The old pile of laundry is a laundry basket now.
+        guard let kind = raw == "laundry" ? .laundryBasket : FurnitureKind(rawValue: raw) else {
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Unknown furniture: \(raw)"))
+        }
+        self = kind
+    }
 }
 
 /// Coordinates are in points relative to the bottom-left corner of the screen.
@@ -67,6 +78,8 @@ struct Furniture: Codable, Identifiable, Hashable {
     var height: Double = 0
     /// Bowl fill level, 0...1.
     var food: Double = 1
+    /// Clean laundry a cat has slept on is covered in its fur, until it's washed.
+    var fur: RGB?
 
     static func make(_ kind: FurnitureKind, at x: Double, _ y: Double) -> Furniture {
         switch kind {

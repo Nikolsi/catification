@@ -59,6 +59,14 @@ final class World {
         }
     }
 
+    /// The furniture as it is now (bowls empty, laundry furry…).
+    var furniture: [Furniture] { world.furniture }
+
+    /// Runs `body` inside this world's time and chance, e.g. to tell a cat to do something.
+    func act(_ body: (CatWorld) -> Void) {
+        Sim.run(in: &state) { body(world) }
+    }
+
     /// Something happens to a cat, as if the person at the computer did it.
     func emit(_ event: WorldEvent, to cat: Cat) {
         Sim.run(in: &state) {

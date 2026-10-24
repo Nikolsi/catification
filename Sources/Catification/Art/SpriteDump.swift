@@ -43,7 +43,7 @@ enum SpriteDump {
             PropArt.shelf(width: 30).image, PropArt.post(height: 40).image, PropArt.bed(front: false).image,
             PropArt.bowl(food: 2).image, PropArt.bowl(food: 1).image, PropArt.bowl(food: 0).image,
             PropArt.trash(front: false).image, PropArt.trash(front: true).image, PropArt.yarn(frame: 0).image,
-            PropArt.box(front: false).image, PropArt.laundry(front: false).image,
+            PropArt.box(front: false).image, PropArt.laundryBasket(front: false).image, PropArt.laundryStack().image, PropArt.clothesChair().image,
             PropArt.flowerPot(squashed: false, front: false).image, PropArt.flowerPot(squashed: true, front: false).image,
             PropArt.wardrobe(front: false).image,
             PropArt.fountain(frame: 0).image, PropArt.fountain(frame: 1).image, PropArt.fountain(frame: 2).image,

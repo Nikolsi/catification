@@ -8,7 +8,7 @@ import SwiftUI
 @MainActor
 final class DemoDirector {
     enum Scene: String, CaseIterable {
-        case notch, jump, miss, trash, butterflies, pet, play, ambush, drink, naps, poses, trailer, windows
+        case notch, jump, miss, trash, butterflies, pet, play, ambush, drink, laundry, naps, poses, trailer, windows
 
         /// How long the recording script should record, in seconds.
         var duration: Double {
@@ -24,6 +24,7 @@ final class DemoDirector {
             case .poses: 22
             case .ambush: 15.5
             case .drink: 25
+            case .laundry: 15
             case .trailer: 22
             case .windows: 20
             }
@@ -143,10 +144,27 @@ final class DemoDirector {
                 cat.brain = brain
                 cats.append(cat)
             }
+        case .laundry:
+            // Four cats, four kinds of laundry; whoever sleeps on the clean pile leaves fur on it.
+            let spots: [(CoatPreset, CatPlace, FurnitureKind, CGFloat)] = [
+                (.gray, .cleanLaundry, .laundryStack, 100), (.calico, .laundry, .laundryBasket, 210), (.tuxedo, .chair, .clothesChair, 320),
+            ]
+            for (coat, place, kind, x) in spots {
+                var cat = CatConfig(name: coat.title, coat: coat, personality: .lazy)
+                var brain = CatBrain.preset(.lazy)
+                // Only its own spot: clean laundry tempts every cat a little otherwise.
+                var places: [CatPlace: Double] = [.bed: 0, .friends: 0, .cleanLaundry: 0]
+                places[place] = 3
+                brain.places = places
+                brain.routines = []
+                cat.brain = brain
+                cats.append(cat)
+                furniture.append(Furniture(kind: kind, x: Double(r.minX + x), y: Double(g)))
+            }
         case .naps:
             // Each cat has one firm favourite spot.
             let spots: [(CoatPreset, CatPlace, FurnitureKind, CGFloat)] = [
-                (.ginger, .box, .box, 50), (.siamese, .closedBox, .closedBox, 130), (.calico, .laundry, .laundry, 215),
+                (.ginger, .box, .box, 50), (.siamese, .closedBox, .closedBox, 130), (.calico, .laundry, .laundryBasket, 215),
                 (.gray, .flowerPot, .flowerPot, 300), (.tuxedo, .wardrobe, .wardrobe, 385),
             ]
             for (coat, place, kind, x) in spots {
@@ -194,10 +212,12 @@ final class DemoDirector {
                            width: notch.upperBound - notch.lowerBound + 400, height: world.geo.menuBarHeight + 4)
             world.setDemoStage(stage, floor: 0, notch: CGRect(x: notch.lowerBound, y: world.geo.menuBarY,
                                                               width: notch.upperBound - notch.lowerBound, height: world.geo.menuBarHeight))
-        } else if scene == .poses || scene == .ambush || scene == .drink {
-            // A low strip: everything happens on the floor, so the cats look big. The ambush needs
-            // even less room: just around the two cats.
-            stage = scene == .ambush || scene == .drink
+        } else if scene == .poses || scene == .ambush || scene == .drink || scene == .laundry {
+            // A low strip: everything happens on the floor, so the cats look big. The ambush, the
+            // drink and the laundry need even less room: just around the cats.
+            stage = scene == .laundry
+                ? CGRect(x: Self.room.minX + 50, y: Self.room.minY, width: 330, height: 120)
+                : scene == .ambush || scene == .drink
                 ? CGRect(x: Self.room.minX + 50, y: Self.room.minY, width: 280, height: 120)
                 : CGRect(x: Self.room.minX, y: Self.room.minY, width: Self.room.width, height: 120)
             world.setDemoStage(stage, floor: Self.floor, notch: nil)
@@ -418,6 +438,7 @@ final class DemoDirector {
         case .pet: return [r.midX]
         case .play: return [r.minX + 150, r.minX + 240]
         case .naps: return [r.minX + 90, r.minX + 170, r.minX + 250, r.minX + 330, r.minX + 340]
+        case .laundry: return [r.minX + 150, r.minX + 260, r.minX + 370]
         case .windows: return []
         case .poses: return [r.minX + 60, r.minX + 160, r.minX + 270, r.minX + 380]
         case .ambush: return [r.minX + 150, r.minX + 230]
@@ -492,7 +513,30 @@ final class DemoDirector {
             }
         case .naps:
             at(1.6) { world in
-                for cat in world.cats { cat.goToSleep(world) }
+                for cat in world.cats {
+                    // Its favourite spot, every time (otherwise now and then it naps right where it is).
+                    cat.napPlaceOverride = cat.config.brain?.places.max { $0.value < $1.value }?.key
+                    cat.goToSleep(world)
+                }
+            }
+        case .laundry:
+            at(1.6) { world in
+                let places: [CatPlace] = [.cleanLaundry, .laundry, .chair]
+                for (cat, place) in zip(world.cats, places) {
+                    cat.demoNoWake = true
+                    cat.napPlaceOverride = place
+                    cat.goToSleep(world)
+                }
+            }
+            // The grey one gets up and hops down: the clean laundry is covered in grey fur now.
+            at(9.5) { world in
+                guard let grey = world.cats.first else { return }
+                grey.demoNoWake = false
+                grey.wakeUp()
+            }
+            at(11) { world in
+                guard let grey = world.cats.first else { return }
+                grey.go(to: .ground, x: r.minX + 68, then: .sit, world: world)
             }
         case .drink:
             at(1.2) { world in world.cats.first?.perform(.drink, world: world) }
