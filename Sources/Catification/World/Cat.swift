@@ -515,6 +515,12 @@ final class Cat {
     /// Starts an action chosen by the planner or a reaction. False if it can't happen right now.
     @discardableResult
     func perform(_ action: CatAction, world: CatWorld) -> Bool {
+        guard start(action, world: world) else { return false }
+        world.report?.decided(action, cat: self)
+        return true
+    }
+
+    private func start(_ action: CatAction, world: CatWorld) -> Bool {
         switch action {
         case .idle:
             begin(.stand, for: .random(in: 2...5, using: &Sim.rng))
@@ -642,12 +648,16 @@ final class Cat {
                 var r = Double.random(in: 0..<options.reduce(0) { $0 + $1.weight }, using: &Sim.rng)
                 let index = options.firstIndex { r -= $0.weight; return r < 0 } ?? 0
                 guard let place = options[index].place else { break }
-                if nap(at: place, world) { return }
+                if nap(at: place, world) {
+                    world.report?.napped(at: place, cat: self)
+                    return
+                }
                 options.remove(at: index)
             }
         }
         route = nil
         begin(.sleep, for: sleepDuration)
+        world.report?.napped(at: nil, cat: self)
     }
 
     private func nap(at place: CatPlace, _ world: CatWorld) -> Bool {
@@ -823,7 +833,7 @@ final class Cat {
             if big, !routeHurried, world.store.jumpMath {
                 let thinking = 1.2 + .random(in: 0...0.9, using: &Sim.rng) + min(Double(abs(dy)) / 500, 0.8)
                 begin(.calculating, for: thinking)
-                DemoDirector.current?.event("calculate", cat: self)
+                world.note("calculate", cat: self)
                 calcSpawn = 0
                 world.startCalculation(for: self, from: CGPoint(x: x, y: y), to: CGPoint(x: fresh.landX, y: toY))
             } else {
@@ -876,7 +886,7 @@ final class Cat {
         }
         if abs(vx) > 1 { facingRight = vx > 0 }
         begin(.jumping)
-        DemoDirector.current?.event("jump", cat: self)
+        world.note("jump", cat: self)
     }
 
     private func resolveHang(_ world: CatWorld) {
@@ -952,7 +962,7 @@ final class Cat {
             vy = 0
             // In a demo, hang on for the camera.
             begin(.hanging, for: demoMiss ? 4 : .random(in: 0.9...1.5, using: &Sim.rng))
-            DemoDirector.current?.event("hang", cat: self)
+            world.note("hang", cat: self)
             showEmote(.exclaim, for: 1.2)
             return
         }
@@ -991,7 +1001,7 @@ final class Cat {
             }
         case .jumping:
             if let h = hop, h.to == s.id, var r = route {
-                DemoDirector.current?.event("landed", cat: self)
+                world.note("landed", cat: self)
                 if r.hops.first?.to == s.id { r.hops.removeFirst() }
                 route = r
                 hop = nil
@@ -1006,7 +1016,7 @@ final class Cat {
                 fellFromLedge = false
                 showEmote(.question, for: 1.2)
                 begin(.groom, for: .random(in: 2.5...4, using: &Sim.rng))
-                DemoDirector.current?.event("fell", cat: self)
+                world.note("fell", cat: self)
                 react(to: .missedJump, world: world)
                 return
             }
@@ -1407,7 +1417,7 @@ final class Cat {
                     x += dir * step
                     transit = Transit(entry: entry, exit: exit, dir: dir)
                     world.portalTransitBegan(at: entry)
-                    DemoDirector.current?.event("portal", cat: self)
+                    world.note("portal", cat: self)
                     return false
                 }
             }

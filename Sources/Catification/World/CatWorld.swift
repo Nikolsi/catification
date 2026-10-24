@@ -85,9 +85,16 @@ final class CatWorld {
     var playArea: CGRect { demoStage ?? CGRect(origin: .zero, size: geo.frame.size) }
     var onEditModeChange: ((Bool) -> Void)?
 
-    init(store: SettingsStore) {
+    /// Never shown and stepped by hand (`step(_:)`): the fast-forward runner and tests. No timer,
+    /// no real windows, nobody at the mouse.
+    let headless: Bool
+    /// Counts what the cats do, if someone is interested (the fast-forward runner).
+    var report: DayReport?
+
+    init(store: SettingsStore, geometry: WorldGeometry? = nil, headless: Bool = false) {
         self.store = store
-        geo = WorldGeometry.current(mode: store.mode, virtualNotch: store.virtualNotch)
+        self.headless = headless
+        geo = geometry ?? WorldGeometry.current(mode: store.mode, virtualNotch: store.virtualNotch)
         panel = OverlayPanel(frame: geo.frame)
         view = WorldView(frame: NSRect(origin: .zero, size: geo.frame.size))
         view.layer = root
@@ -115,6 +122,11 @@ final class CatWorld {
         syncCats()
         applyVisibility()
 
+        if headless {
+            mouse = CGPoint(x: -10_000, y: -10_000)
+            lastMouse = mouse
+            return
+        }
         store.objectWillChange
             .sink { [weak self] _ in MainActor.assumeIsolated { self?.scheduleSync() } }
             .store(in: &cancellables)
@@ -178,7 +190,14 @@ final class CatWorld {
         cats.removeAll { $0 === cat }
     }
 
+    /// Picks up changes to the store now. The app does this on its own on the next turn of the run loop.
+    func syncWithStore() {
+        syncFurniture()
+        syncCats()
+    }
+
     private func applyVisibility() {
+        guard !headless else { return }
         if store.catsVisible {
             if !panel.isVisible { panel.orderFrontRegardless() }
         } else if panel.isVisible {
@@ -240,12 +259,22 @@ final class CatWorld {
         let t = CACurrentMediaTime()
         let dt = Sim.advance(realDelta: t - lastTime)
         lastTime = t
+        let m = NSEvent.mouseLocation
+        mouse = CGPoint(x: m.x - geo.frame.minX, y: m.y - geo.frame.minY)
+        step(dt)
+
+        // Only catch the mouse while it is over something interactive; everywhere else
+        // clicks go straight through to the menu bar and the apps below.
+        let over = wantsMouse(at: mouse)
+        if panel.ignoresMouseEvents == over { panel.ignoresMouseEvents = !over }
+        lastMouse = mouse
+    }
+
+    /// One step of the simulation, `dt` seconds long; `Sim.time` has already moved on by `dt`.
+    func step(_ dt: Double) {
         now = Sim.time
         runDue()
         guard store.catsVisible else { return }
-
-        let m = NSEvent.mouseLocation
-        mouse = CGPoint(x: m.x - geo.frame.minX, y: m.y - geo.frame.minY)
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
@@ -255,6 +284,7 @@ final class CatWorld {
         updateDrag()
         handleStroking()
         for cat in cats { cat.update(dt: dt, world: self) }
+        report?.tick(cats, dt: dt)
         updateProps(dt)
         ball?.update(dt: dt, world: self)
         updateButterflies(dt)
@@ -278,19 +308,19 @@ final class CatWorld {
         if laserOn { laserDot.position = mouse }
 
         CATransaction.commit()
+    }
 
-        // Only catch the mouse while it is over something interactive; everywhere else
-        // clicks go straight through to the menu bar and the apps below.
-        let over = wantsMouse(at: mouse)
-        if panel.ignoresMouseEvents == over { panel.ignoresMouseEvents = !over }
-        lastMouse = mouse
+    /// A notable moment for a cat (jump, hang, portal…): demo recordings and the report hear about it.
+    func note(_ moment: String, cat: Cat) {
+        DemoDirector.current?.event(moment, cat: cat)
+        report?.moment(moment, cat: cat)
     }
 
     private var climbingIcons: Bool { store.climbIcons && geo.mode.hasFurniture }
 
     private func updateWindowTracking() {
         let tracking = (geo.mode == .screen && store.walkOnWindows) || geo.mode == .desktop || climbingIcons
-        guard tracking else { return }
+        guard tracking, !headless else { return }
         let riding = cats.contains { $0.surface?.isWindow == true } || ball?.surface?.isWindow == true
         windowTracker.update(now: now, interval: demoWindows ? 0 : (riding ? 0.08 : 0.3), panelFrame: geo.frame)
         if climbingIcons {
@@ -396,7 +426,7 @@ final class CatWorld {
                 s.id != ignoring && !(staticOnly && s.id.isDynamic)
                     && previousY >= s.y - 0.01 && y <= s.y && s.segmentIndex(containing: x) != nil
             }
-            .max { $0.y < $1.y }
+            .max { $0.y != $1.y ? $0.y < $1.y : $0.id > $1.id }
     }
 
     func hasSurfaceBelow(x: CGFloat, y: CGFloat) -> Bool {
@@ -413,7 +443,7 @@ final class CatWorld {
     func surfaceUnder(_ p: CGPoint) -> (surface: SurfaceID, x: CGFloat)? {
         surfaces.values
             .filter { $0.y <= p.y + 4 && p.y - $0.y < 80 && $0.segmentIndex(containing: p.x) != nil }
-            .max { $0.y < $1.y }
+            .max { $0.y != $1.y ? $0.y < $1.y : $0.id > $1.id }
             .map { ($0.id, p.x) }
     }
 
@@ -490,7 +520,7 @@ final class CatWorld {
 
     func randomDestination(for cat: Cat) -> (surface: SurfaceID, x: CGFloat)? {
         guard let explored = explore(for: cat) else { return nil }
-        let candidates = explored.map.keys.filter { $0 != explored.start }
+        let candidates = explored.map.keys.filter { $0 != explored.start }.sorted()
         guard let node = candidates.randomElement(using: &Sim.rng), let s = surfaces[node.id], node.segment < s.segments.count else { return nil }
         let seg = s.segments[node.segment]
         let m = min(6 * cat.pixel, (seg.upperBound - seg.lowerBound) / 2)
@@ -506,7 +536,7 @@ final class CatWorld {
             default: false
             }
         }
-        guard let best = furniture.max(by: { (surfaces[$0.id]?.y ?? 0) < (surfaces[$1.id]?.y ?? 0) }),
+        guard let best = furniture.sorted().max(by: { (surfaces[$0.id]?.y ?? 0) < (surfaces[$1.id]?.y ?? 0) }),
               let s = surfaces[best.id], best.segment < s.segments.count else { return nil }
         let seg = s.segments[best.segment]
         let m = min(6 * cat.pixel, (seg.upperBound - seg.lowerBound) / 2)
@@ -535,7 +565,7 @@ final class CatWorld {
         case .floor:
             return anywhere(on: .ground)
         case .windows:
-            return surfaces.keys.filter(\.isWindow).randomElement(using: &Sim.rng).flatMap { anywhere(on: $0) }
+            return surfaces.keys.filter(\.isWindow).sorted().randomElement(using: &Sim.rng).flatMap { anywhere(on: $0) }
         case .cursor:
             return surfaceUnder(mouse).flatMap { beside($0.x, on: $0.surface) }
         case .bowl:

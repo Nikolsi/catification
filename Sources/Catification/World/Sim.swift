@@ -33,6 +33,47 @@ enum Sim {
         startDate = (start ?? date).addingTimeInterval(-time)
     }
 
+    /// Everything above, so a world can keep its own and run with it (`run(in:_:)`).
+    struct State {
+        var rng: SimRandom
+        var time: Double = 0
+        var fixedStep: Double?
+        var startDate: Date?
+
+        init(rng: SimRandom, time: Double, fixedStep: Double?, startDate: Date?) {
+            self.rng = rng
+            self.time = time
+            self.fixedStep = fixedStep
+            self.startDate = startDate
+        }
+
+        /// A repeatable state: seeded randomness, fixed 1/60 s steps, the clock at `start`.
+        init(seed: UInt64, start: Date) {
+            rng = SimRandom(seed: seed)
+            fixedStep = 1.0 / 60
+            startDate = start
+        }
+    }
+
+    /// Runs `body` with `state` as the simulation's time and chance, then hands the changes back.
+    /// Several worlds can live in one process this way (tests, the fast-forward runner).
+    static func run<T>(in state: inout State, _ body: () throws -> T) rethrows -> T {
+        let saved = State(rng: rng, time: time, fixedStep: fixedStep, startDate: startDate)
+        set(state)
+        defer {
+            state = State(rng: rng, time: time, fixedStep: fixedStep, startDate: startDate)
+            set(saved)
+        }
+        return try body()
+    }
+
+    private static func set(_ s: State) {
+        rng = s.rng
+        time = s.time
+        fixedStep = s.fixedStep
+        startDate = s.startDate
+    }
+
     /// Advances simulated time by one tick and returns its length.
     static func advance(realDelta: Double) -> Double {
         let dt = fixedStep ?? min(realDelta, 1.0 / 20)
