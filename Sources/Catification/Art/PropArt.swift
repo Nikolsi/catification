@@ -25,6 +25,8 @@ enum PropArt {
         "J": RGB(hex: 0x4F9E4A), "j": RGB(hex: 0x7CC46A), "X": RGB(hex: 0xF2C14E),
         // Wardrobe insides and knobs
         "n": RGB(hex: 0x2A2230), "x": RGB(hex: 0xE0B050),
+        // Water fountain: white ceramic, its shade, and water
+        "z": RGB(hex: 0xC9C3D6), "o": RGB(hex: 0x7FC8F8), "w": RGB(hex: 0xD8F0FF),
     ]
     private static let outline = RGB(hex: 0x3A2216)
 
@@ -123,6 +125,34 @@ enum PropArt {
             if food == 0 { rows.removeFirst(2) }
             var c = PixelCanvas(width: bowlWidth + 2, height: rows.count + 2)
             c.draw(rows, at: 1, 1, kind: .body, outline: .hard)
+            return c
+        }
+    }
+
+    static let fountainWidth = 13
+
+    /// A pet water fountain: a white ceramic body with a window onto the water tank, a bowl of
+    /// water on top and a little jet bubbling up.
+    @MainActor static func fountain(frame: Int) -> Art {
+        cached("fountain\(frame % 3)") {
+            let jet = [
+                ["......w......", ".....wow....."],
+                [".....w.w.....", "......o......"],
+                ["...w.....w...", ".....wow....."],
+            ][frame % 3]
+            let body = [
+                "..ooooooooo..",
+                ".ZZZZZZZZZZZ.",
+                ".ZoooooooooZ.",
+                ".ZowwooooooZ.",
+                ".ZZZZZZZZZZz.",
+                "..ZZZZZZZZz..",
+                "..zzzzzzzzz..",
+            ]
+            var c = PixelCanvas(width: fountainWidth + 2, height: jet.count + body.count + 2)
+            c.draw(body, at: 1, 1 + jet.count, kind: .body, outline: .hard)
+            // The jet and drops float above the bowl, unoutlined.
+            c.draw(jet, at: 1, 1, kind: .fx, outline: .none)
             return c
         }
     }

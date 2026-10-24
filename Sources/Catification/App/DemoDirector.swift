@@ -8,7 +8,7 @@ import SwiftUI
 @MainActor
 final class DemoDirector {
     enum Scene: String, CaseIterable {
-        case notch, jump, miss, trash, butterflies, pet, play, ambush, naps, poses, trailer, windows
+        case notch, jump, miss, trash, butterflies, pet, play, ambush, drink, naps, poses, trailer, windows
 
         /// How long the recording script should record, in seconds.
         var duration: Double {
@@ -23,6 +23,7 @@ final class DemoDirector {
             case .naps: 10
             case .poses: 22
             case .ambush: 15.5
+            case .drink: 10
             case .trailer: 22
             case .windows: 20
             }
@@ -120,6 +121,10 @@ final class DemoDirector {
         case .ambush:
             cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
                     CatConfig(name: L("Smokey"), coat: .gray, personality: .lazy)]
+        case .drink:
+            cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful)]
+            furniture = [Furniture(kind: .fountain, x: Double(r.minX + 200), y: Double(g)),
+                         Furniture(kind: .bowl, x: Double(r.minX + 240), y: Double(g))]
         case .poses:
             // Four ways to sleep, then a big stretch.
             let poses: [(CoatPreset, SleepPose)] = [(.ginger, .loaf), (.gray, .curled), (.tuxedo, .sploot), (.calico, .bellyUp)]
@@ -182,10 +187,10 @@ final class DemoDirector {
                            width: notch.upperBound - notch.lowerBound + 400, height: world.geo.menuBarHeight + 4)
             world.setDemoStage(stage, floor: 0, notch: CGRect(x: notch.lowerBound, y: world.geo.menuBarY,
                                                               width: notch.upperBound - notch.lowerBound, height: world.geo.menuBarHeight))
-        } else if scene == .poses || scene == .ambush {
+        } else if scene == .poses || scene == .ambush || scene == .drink {
             // A low strip: everything happens on the floor, so the cats look big. The ambush needs
             // even less room: just around the two cats.
-            stage = scene == .ambush
+            stage = scene == .ambush || scene == .drink
                 ? CGRect(x: Self.room.minX + 50, y: Self.room.minY, width: 280, height: 120)
                 : CGRect(x: Self.room.minX, y: Self.room.minY, width: Self.room.width, height: 120)
             world.setDemoStage(stage, floor: Self.floor, notch: nil)
@@ -409,6 +414,7 @@ final class DemoDirector {
         case .windows: return []
         case .poses: return [r.minX + 60, r.minX + 160, r.minX + 270, r.minX + 380]
         case .ambush: return [r.minX + 150, r.minX + 230]
+        case .drink: return [r.minX + 90]
         case .trailer:
             guard let stage = world?.demoStage else { return [] }
             return [stage.minX + 40, stage.minX + 130]
@@ -481,6 +487,8 @@ final class DemoDirector {
             at(1.6) { world in
                 for cat in world.cats { cat.goToSleep(world) }
             }
+        case .drink:
+            at(1.2) { world in world.cats.first?.perform(.drink, world: world) }
         case .ambush:
             // A sleeping cat, a sneaky one, a pounce, a fight cloud, and a very cross cat.
             at(0.8) { world in

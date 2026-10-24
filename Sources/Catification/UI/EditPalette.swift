@@ -59,6 +59,7 @@ struct EditPaletteView: View {
         case .laundry: PropArt.laundry(front: false).image
         case .wardrobe: PropArt.wardrobe(front: false).image
         case .flowerPot: PropArt.flowerPot(squashed: false, front: false).image
+        case .fountain: PropArt.fountain(frame: 0).image
         }
     }
 }

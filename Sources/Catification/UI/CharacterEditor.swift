@@ -407,6 +407,7 @@ extension RecipeStep {
         case .scratch: L("scratches")
         case .zoomies: L("zoomies")
         case .wander: L("wanders off")
+        case .drink: L("drinks water")
         case .followCursor: L("comes to the cursor")
         case .emote(let e):
             switch e {

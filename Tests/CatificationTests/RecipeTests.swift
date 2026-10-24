@@ -8,11 +8,11 @@ final class RecipeTests: XCTestCase {
     func testHandWrittenRecipeDecodes() throws {
         let json = #"""
         { "name": "After dinner", "when": { "event": "ate" }, "chance": 0.7, "cooldown": 3600,
-          "do": [ { "goTo": "trash" }, { "rummage": true }, { "goTo": "laundry" }, { "sleep": 120 }, { "emote": "heart" } ] }
+          "do": [ { "goTo": "trash" }, { "rummage": true }, { "goTo": "laundry" }, { "sleep": 120 }, { "drink": true }, { "emote": "heart" } ] }
         """#
         let recipe = try JSONDecoder().decode(Recipe.self, from: Data(json.utf8))
         XCTAssertEqual(recipe.trigger, .event(.ate))
-        XCTAssertEqual(recipe.steps, [.goTo(.trash), .rummage, .goTo(.laundry), .sleep(seconds: 120), .emote(.heart)])
+        XCTAssertEqual(recipe.steps, [.goTo(.trash), .rummage, .goTo(.laundry), .sleep(seconds: 120), .drink, .emote(.heart)])
         XCTAssertEqual(recipe.chance, 0.7)
         XCTAssertTrue(recipe.isRunnable)
     }

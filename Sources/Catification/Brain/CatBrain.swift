@@ -3,12 +3,13 @@ import Foundation
 
 /// Something a cat can decide to do. Each one maps onto an existing behaviour in `Cat`.
 enum CatAction: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiable {
-    case idle, sit, groom, wander, explore, zoomies, nap, scratch, rummage, play, chaseBall, visitCursor
+    case idle, sit, groom, wander, explore, zoomies, nap, scratch, rummage, play, chaseBall, visitCursor, drink
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .drink: L("Drinks water")
         case .idle: L("Stand around")
         case .sit: L("Sit")
         case .groom: L("Groom")

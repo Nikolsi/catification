@@ -1,7 +1,7 @@
 import CoreGraphics
 
 enum EmoteKind: CaseIterable {
-    case heart, zzz, anger, exclaim, note, question, check, fish, target, fluff, paper, bone, sparkBlue, sparkOrange
+    case heart, zzz, anger, exclaim, note, question, check, fish, target, fluff, paper, bone, sparkBlue, sparkOrange, drop
 
     fileprivate var rows: [String] {
         switch self {
@@ -18,6 +18,7 @@ enum EmoteKind: CaseIterable {
         case .paper: [".P.", "PPP", ".PP"]
         case .bone: ["B...B", "BBBBB", "B...B"]
         case .sparkBlue, .sparkOrange: [".X.", "XXX", ".X."]
+        case .drop: ["X"]
         }
     }
 
@@ -37,6 +38,7 @@ enum EmoteKind: CaseIterable {
         case .bone: ["B": RGB(hex: 0xF2EAD8)]
         case .sparkBlue: ["X": RGB(hex: 0x6CC8FF)]
         case .sparkOrange: ["X": RGB(hex: 0xFFB347)]
+        case .drop: ["X": RGB(hex: 0x9FD8FF)]
         }
     }
 
@@ -53,7 +55,7 @@ enum EmoteKind: CaseIterable {
         case .target: RGB(hex: 0x14324A)
         case .paper: RGB(hex: 0x6B6B6B)
         case .bone: RGB(hex: 0x6B5E48)
-        case .fluff, .sparkBlue, .sparkOrange: nil
+        case .fluff, .sparkBlue, .sparkOrange, .drop: nil
         }
     }
 }
