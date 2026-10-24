@@ -244,3 +244,23 @@
 "Closed box" = "Закрытая коробка";
 "In an open box" = "В открытой коробке";
 "On top of a closed box" = "На закрытой коробке";
+
+/* Rituals (recipes) */
+"Rituals" = "Ритуалы";
+"Add a ritual" = "Добавить ритуал";
+"Little habits made of several steps. More are coming; a .catprofile file can describe any ritual." = "Маленькие привычки из нескольких шагов. Скоро будет больше, а в файле .catprofile можно описать любой ритуал.";
+"After petting, follows you" = "После ласки ходит за вами";
+"Evening zoomies" = "Вечерний тыгыдык";
+"When: %@" = "Когда: %@";
+"sometimes" = "иногда";
+"Needs a newer Catification" = "Нужна более новая версия Catification";
+"goes to: %@" = "идёт: %@";
+"sits" = "сидит";
+"naps" = "спит";
+"washes" = "умывается";
+"waits" = "ждёт";
+"rummages in the trash" = "роется в мусорке";
+"scratches" = "точит когти";
+"zoomies" = "тыгыдык";
+"wanders off" = "уходит гулять";
+"comes to the cursor" = "идёт к курсору";
