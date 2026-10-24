@@ -42,6 +42,30 @@ final class WorldTests: XCTestCase {
         XCTAssertGreaterThan(b, 3 * max(1, a), "rummaging: lover \(Int(b)) s, indifferent \(Int(a)) s")
     }
 
+    /// Lazy cats sleep a lot more than playful ones (#30): about a third of the time against a tenth.
+    func testLazyCatsSleepMuchMoreThanPlayfulOnes() {
+        let report = day(minutes: 60, [CatConfig(name: "Lazy", coat: .gray, personality: .lazy),
+                                       CatConfig(name: "Playful", coat: .ginger, personality: .playful)])
+        func asleep(_ name: String) -> Double {
+            guard let day = report.day(of: name) else { return 0 }
+            return (day.seconds["sleep"] ?? 0) / max(1, day.seconds.values.reduce(0, +))
+        }
+        XCTAssertGreaterThan(asleep("Lazy"), 0.2)
+        XCTAssertGreaterThan(asleep("Lazy"), 2 * asleep("Playful"), "lazy \(asleep("Lazy")), playful \(asleep("Playful"))")
+    }
+
+    func testTheOwnerFillsAnEmptyBowl() {
+        let world = World()
+        world.spawn(character: CatConfig(name: "Ginger", coat: .ginger, personality: .playful))
+        world.run(for: 30 * 60)
+        let early = world.report.day(of: "Ginger")?.actions.values.reduce(0, +) ?? 0
+        world.run(for: 60 * 60)
+        let later = (world.report.day(of: "Ginger")?.actions.values.reduce(0, +) ?? 0) - early
+        // Without someone feeding them, hungry cats sit by the empty bowl from about half an hour on
+        // and stop doing anything else.
+        XCTAssertGreaterThan(later, early, "first half hour \(early) actions, next hour \(later)")
+    }
+
     func testPettingIsCounted() throws {
         let world = World()
         let cat = try XCTUnwrap(world.spawn(character: CatConfig(name: "Ginger", coat: .ginger, personality: .affectionate)))
