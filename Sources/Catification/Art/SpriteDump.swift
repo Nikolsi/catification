@@ -1,13 +1,13 @@
 import AppKit
 import UniformTypeIdentifiers
 
-/// `Catification --dump-sprites out.png` renders every animation of every coat preset
-/// into one enlarged sheet. Handy when tweaking the pixel art.
+/// `Catification --dump-sprites out.png [sleep,yawn]` renders every animation (or just the named
+/// ones, for a few coats) of every coat preset into one enlarged sheet. Handy when tweaking the pixel art.
 enum SpriteDump {
     @MainActor
-    static func run(to path: String) {
-        let anims = Anim.allCases
-        let presets = CoatPreset.all
+    static func run(to path: String, only names: [String]? = nil) {
+        let anims = names.map { names in Anim.allCases.filter { names.contains(String(describing: $0)) } } ?? Anim.allCases
+        let presets = names == nil ? CoatPreset.all : Array(CoatPreset.all.prefix(4))
         let zoom = 6
         let cellW = CatArt.W * zoom, cellH = CatArt.H * zoom
         let columns = anims.reduce(0) { $0 + CatArt.frames[$1]!.count }

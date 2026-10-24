@@ -264,3 +264,11 @@
 "zoomies" = "тыгыдык";
 "wanders off" = "уходит гулять";
 "comes to the cursor" = "идёт к курсору";
+
+/* Sleeping poses */
+"Sleeps" = "Спит";
+"Any way" = "По-разному";
+"Tucked up like a loaf" = "Буханочкой";
+"Curled up in a ball" = "Калачиком";
+"Stretched out on the belly" = "На пузе, вытянув лапки";
+"Belly up" = "На спинке, пузиком кверху";

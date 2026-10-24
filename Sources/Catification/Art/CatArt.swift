@@ -3,6 +3,7 @@ import AppKit
 enum Anim: CaseIterable {
     case stand, blink, squish, walk, run, jump, crouch, crouchUp, swipe, sit, sitBlink, petted, groom, sleep, dangle
     case hang, climb, scratch, eat, peek
+    case sleepCurled, sleepSploot, sleepBelly, yawn, stretch
 
     var fps: Double {
         switch self {
@@ -21,7 +22,10 @@ enum Anim: CaseIterable {
         case .sit: 0.8
         case .petted: 3.5
         case .groom: 3
-        case .sleep: 0.7
+        case .sleep, .sleepCurled, .sleepSploot: 0.7
+        case .sleepBelly: 0.9
+        case .yawn: 3
+        case .stretch: 1.4
         case .dangle: 2.5
         case .blink, .squish, .jump, .sitBlink: 1
         }
@@ -39,6 +43,11 @@ enum Anim: CaseIterable {
         case .hang: (-1, 14)
         case .sit, .sitBlink, .petted, .groom: (3, 11)
         case .sleep: (5, 5)
+        case .sleepCurled: (4, 5)
+        case .sleepSploot: (7, 5)
+        case .sleepBelly: (7, 4)
+        case .yawn: (3, 11)
+        case .stretch: (6, 8)
         case .dangle: (-1, 14)
         }
     }
@@ -52,7 +61,7 @@ enum CatArt {
     static let W = 26
     static let H = 18
 
-    enum Eyes { case open, closed, happy, squint, lookUp }
+    enum Eyes { case open, closed, happy, squint, lookUp, yawn, yawnWide }
 
     static func head(_ eyes: Eyes) -> [String] {
         var rows = [
@@ -66,8 +75,14 @@ enum CatArt {
         case .happy: rows += ["FFKFFFKFF", "FKFKFKFKF", "FFFBPBFFF"]
         case .squint: rows += ["FKFFFFFKF", "FFKFFFKFF", "FKFBPBFKF"]
         case .lookUp: rows += ["FFKFFFKFF", "FFEFFFEFF", "FFFBPBFFF"]
+        case .yawn: rows += ["FFFFFFFFF", "FKKFFFKKF", "FFFBKBFFF"]
+        case .yawnWide: rows += ["FKFFFFFKF", "FFKFFFKFF", "FFBKKKBFF"]
         }
-        rows.append(".FFBBBFF.")
+        switch eyes {
+        case .yawn: rows.append(".FFBPBFF.")
+        case .yawnWide: rows.append(".FBKPKBF.")
+        default: rows.append(".FFBBBFF.")
+        }
         return rows
     }
 
@@ -193,6 +208,84 @@ enum CatArt {
         return c
     }
 
+    /// Curled up in a round ball, head tucked in, the tail wrapped round the nose.
+    static func sleepingCurled(breathIn: Bool) -> PixelCanvas {
+        var c = PixelCanvas(width: W, height: H)
+        let body = [
+            "....FFFFFF....",
+            "..FFSFFSFFFF..",
+            ".FFFFSFFSFFFF.",
+            "FFFFFFFFFFFFFF",
+            "FFFFFFFFFFFFFF",
+            "FFFFFFFFFFFFFF",
+            ".FFFFFFFFFFFF.",
+        ]
+        // Breathing in, the whole ball grows by a row.
+        c.draw(breathIn ? Array(body.prefix(3)) + ["FFFFFFFFFFFFFF"] + body.dropFirst(3) : body, at: 4, breathIn ? 8 : 9, kind: .body)
+        c.draw(head(.closed), at: 12, 10, kind: .head, outline: .hard)
+        // In front of the face, so it wraps round it.
+        c.tail([(4, 15), (5, 16), (6, 16), (7, 16), (8, 16), (9, 16), (10, 16), (11, 16), (12, 16),
+                (13, 16), (14, 16), (15, 16), (16, 16), (17, 16), (18, 16), (19, 15)], outline: .hard)
+        return c
+    }
+
+    /// Flat on the belly with the paws stretched out front and back, chin down.
+    static func sleepingSploot(breathIn: Bool) -> PixelCanvas {
+        var c = PixelCanvas(width: W, height: H)
+        c.tail([(4, 13), (3, 13), (2, 12), (1, 12), (0, 11)])
+        c.draw(["DDDDBB"], at: 0, 15, kind: .leg)
+        c.draw(["DDDDDDBB"], at: 18, 15, kind: .leg)
+        let body = [
+            "..FFSFFSFFSFF...",
+            ".FFFSFFSFFSFFFF.",
+            "FFFFFFFFFFFFFFFF",
+        ]
+        c.draw(breathIn ? ["....FFFFFF......"] + body : body, at: 3, breathIn ? 12 : 13, kind: .body)
+        c.draw(["FFFFBB"], at: 0, 16, kind: .leg, outline: .hard)
+        c.draw(["FFFFFFBB"], at: 17, 16, kind: .leg, outline: .hard)
+        c.draw(head(.closed), at: 15, 9, kind: .head, outline: .hard)
+        return c
+    }
+
+    /// On its back, belly up, paws in the air and the face upside down.
+    static func sleepingBelly(twitch: Bool) -> PixelCanvas {
+        var c = PixelCanvas(width: W, height: H)
+        c.tail([(5, 16), (4, 16), (3, 16), (2, 15), (1, 15)])
+        let paw = ["BB", "FF", "FF"], farPaw = ["BB", "DD", "DD"]
+        c.draw(farPaw, at: 9, 10, kind: .leg)
+        c.draw(farPaw, at: 15, twitch ? 11 : 10, kind: .leg)
+        c.draw([
+            ".BBBBBBBBBBB.",
+            "FFFFFFFFFFFFF",
+            "FFSFFSFFSFFFF",
+            ".FFFFFFFFFFF.",
+        ], at: 5, 13, kind: .body)
+        c.draw(paw, at: 7, 10, kind: .leg, outline: .hard)
+        c.draw(paw, at: 13, 10, kind: .leg, outline: .hard)
+        c.draw(Array(head(.closed).reversed()), at: 16, 10, kind: .head, outline: .hard)
+        return c
+    }
+
+    /// Front paws stretched far ahead, past the nose; chest low, rump and tail up.
+    static func stretching(eyes: Eyes) -> PixelCanvas {
+        var c = PixelCanvas(width: W, height: H)
+        c.tail([(2, 9), (1, 8), (1, 7), (0, 6), (0, 5), (1, 4)])
+        c.draw(legRows(far: true, height: 5), at: 6, 12, kind: .leg)
+        c.draw(["DDDDDDDDBB"], at: 15, 15, kind: .leg)
+        c.draw(legRows(far: false, height: 5), at: 4, 12, kind: .leg)
+        c.draw([
+            "FFFFF.........",
+            "FFSFFSFF......",
+            "FFFFFSFFSFF...",
+            ".FFFFFFFFFFFF.",
+            "..BBFFFFFFFFFF",
+            ".....BBBBBBBBB",
+        ], at: 3, 8, kind: .body)
+        c.draw(head(eyes), at: 14, 9, kind: .head, outline: .hard)
+        c.draw(["FFFFFFFFFBB"], at: 14, 16, kind: .leg, outline: .hard)
+        return c
+    }
+
     static func dangling(swing: Bool) -> PixelCanvas {
         var c = PixelCanvas(width: W, height: H)
         c.tail(swing ? tailHangB : tailHangA)
@@ -281,6 +374,12 @@ enum CatArt {
         f[.groom] = [sitting(eyes: .closed, tail: tailSitA, groomArmY: 9), sitting(eyes: .closed, tail: tailSitA, groomArmY: 10)]
         f[.sleep] = [sleeping(breathIn: false), sleeping(breathIn: true)]
         f[.dangle] = [dangling(swing: false), dangling(swing: true)]
+        f[.sleepCurled] = [sleepingCurled(breathIn: false), sleepingCurled(breathIn: true)]
+        f[.sleepSploot] = [sleepingSploot(breathIn: false), sleepingSploot(breathIn: true)]
+        f[.sleepBelly] = [sleepingBelly(twitch: false), sleepingBelly(twitch: false), sleepingBelly(twitch: true), sleepingBelly(twitch: false)]
+        f[.yawn] = [sitting(eyes: .closed, tail: tailSitA), sitting(eyes: .yawn, tail: tailSitA),
+                    sitting(eyes: .yawnWide, tail: tailSitB), sitting(eyes: .yawn, tail: tailSitB)]
+        f[.stretch] = [stretching(eyes: .closed), stretching(eyes: .yawnWide)]
         return f
     }()
 

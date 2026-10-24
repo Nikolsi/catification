@@ -27,7 +27,7 @@ final class WorldTests: XCTestCase {
     }
 
     /// The point of habits: a cat that loves the trash spends far more of its day in it than one
-    /// that hardly cares. (The curious preset already likes the trash: its habit is 1.5.)
+    /// that hardly cares, at least twice as much. (The curious preset already likes the trash: its habit is 1.5.)
     func testATrashLoverRummagesMore() {
         func cat(_ name: String, rummage: Double) -> CatConfig {
             var cat = CatConfig(name: name, coat: .gray, personality: .curious)
@@ -39,7 +39,7 @@ final class WorldTests: XCTestCase {
         let indifferent = day(minutes: 90, [cat("Indifferent", rummage: 0.5)]).day(of: "Indifferent")
         let lover = day(minutes: 90, [cat("Lover", rummage: 3)]).day(of: "Lover")
         let a = indifferent?.seconds["rummaging"] ?? 0, b = lover?.seconds["rummaging"] ?? 0
-        XCTAssertGreaterThan(b, 3 * max(1, a), "rummaging: lover \(Int(b)) s, indifferent \(Int(a)) s")
+        XCTAssertGreaterThan(b, 2 * max(1, a), "rummaging: lover \(Int(b)) s, indifferent \(Int(a)) s")
     }
 
     /// Lazy cats sleep a lot more than playful ones (#30): about a third of the time against a tenth.

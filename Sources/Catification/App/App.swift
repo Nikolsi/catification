@@ -6,7 +6,7 @@ enum CatificationApp {
     static func main() {
         let args = CommandLine.arguments
         if let i = args.firstIndex(of: "--dump-sprites"), args.count > i + 1 {
-            SpriteDump.run(to: args[i + 1])
+            SpriteDump.run(to: args[i + 1], only: args.count > i + 2 ? args[i + 2].components(separatedBy: ",") : nil)
             return
         }
         if let i = args.firstIndex(of: "--render-social"), args.count > i + 1 {

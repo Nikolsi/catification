@@ -147,6 +147,22 @@ struct Reaction: Codable, Hashable, Identifiable {
     }
 }
 
+/// How a cat lies when it sleeps. Each cat varies, but may have a favourite.
+enum SleepPose: String, Codable, CaseIterable, Identifiable {
+    case loaf, curled, sploot, bellyUp
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .loaf: L("Tucked up like a loaf")
+        case .curled: L("Curled up in a ball")
+        case .sploot: L("Stretched out on the belly")
+        case .bellyUp: L("Belly up")
+        }
+    }
+}
+
 /// A time-of-day habit: between `fromHour` and `toHour` (wrapping past midnight) the action is
 /// more (or less) likely, optionally at a preferred place.
 struct Routine: Codable, Hashable, Identifiable {
@@ -218,6 +234,8 @@ struct CatBrain: Codable, Hashable {
     var reactions: [Reaction] = []
     /// Habits made of several steps ("rituals" in the editor).
     var recipes: [Recipe] = []
+    /// The favourite way to lie when sleeping; nil if it varies.
+    var sleepPose: SleepPose?
     var phrases: [PhraseSituation: [String]] = [:]
 
     init() {}
@@ -237,6 +255,7 @@ struct CatBrain: Codable, Hashable {
         routines = try c.decodeIfPresent([Routine].self, forKey: .routines) ?? []
         reactions = try c.decodeIfPresent([Reaction].self, forKey: .reactions) ?? []
         recipes = (try? c.decodeIfPresent([Recipe].self, forKey: .recipes)) ?? []
+        sleepPose = (try? c.decodeIfPresent(String.self, forKey: .sleepPose)).flatMap(SleepPose.init(rawValue:))
         phrases = known(try c.decodeIfPresent([String: [String]].self, forKey: .phrases), PhraseSituation.self)
     }
 
