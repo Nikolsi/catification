@@ -124,7 +124,9 @@ final class BrainTests: XCTestCase {
         let brain = CatBrain()
         XCTAssertEqual(brain.place(.bed), 1)
         XCTAssertEqual(brain.place(.friends), 1)
-        for place in CatPlace.allCases where place != .bed && place != .friends {
+        // Clean laundry tempts every cat a little.
+        XCTAssertEqual(brain.place(.cleanLaundry), 0.5)
+        for place in CatPlace.allCases where ![.bed, .friends, .cleanLaundry].contains(place) {
             XCTAssertEqual(brain.place(place), 0, "\(place)")
         }
         // A profile from a newer version with spots and habits this one doesn't know still loads.
@@ -159,6 +161,13 @@ final class BrainTests: XCTestCase {
         XCTAssertEqual(imported.about, cat.about)
         // The preset is written out in full, so the file keeps working if presets change.
         XCTAssertEqual(imported.brain, CatBrain.preset(.grumpy))
+    }
+
+    func testAnOldPileOfLaundryLoadsAsABasket() throws {
+        let json = #"{"id": "5C1A4A9E-2F43-4C1B-9E3B-3D7E2B8F9A10", "kind": "laundry", "x": 100, "y": 0, "width": 0, "height": 0, "food": 1}"#
+        let item = try JSONDecoder().decode(Furniture.self, from: Data(json.utf8))
+        XCTAssertEqual(item.kind, .laundryBasket)
+        XCTAssertNil(item.fur)
     }
 
     private func share(_ action: CatAction, in scores: [(action: CatAction, score: Double)]) -> Double {

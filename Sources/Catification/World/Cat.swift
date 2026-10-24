@@ -117,7 +117,8 @@ final class Cat {
     private(set) var social = Double.random(in: 0.3...0.6, using: &Sim.rng)
     private(set) var curiosity = Double.random(in: 0.3...0.6, using: &Sim.rng)
     private var pendingAction: (action: CatAction, expires: Double)?
-    private var napPlaceOverride: CatPlace?
+    /// A place to strongly prefer for the next nap (reactions, demo scenes).
+    var napPlaceOverride: CatPlace?
     private var reactionCooldowns: [UUID: Double] = [:]
 
     // Feelings.
@@ -480,7 +481,8 @@ final class Cat {
             let t = String(format: "%.2f", Sim.time)
             FileHandle.standardError.write("\(t) \(config.name): \(a) on \(surface.map { "\($0)" } ?? "-") x=\(Int(x)) y=\(Int(y))\n".data(using: .utf8)!)
         }
-        if a != .sleep { bedID = nil }
+        // On the way to a bed or a box, keep it in mind through every walk and jump.
+        if a != .sleep, routeThen != .sleep { bedID = nil }
         if a != .drinking, a != .walk, a != .run, a != .jumping, a != .calculating, a != .climbing { drinkingAt = nil }
         if a == .sleep, activity != .sleep, surface != nil {
             choosePose(inFurniture: false)
@@ -806,7 +808,7 @@ final class Cat {
             guard let spot = world.highSpot(for: self) else { return false }
             return go(to: spot.surface, x: spot.x, then: next, world: world)
         case .box, .laundry, .wardrobe, .flowerPot:
-            guard let kind = place.furniture, let spot = world.freeNapFurniture(kind, for: self),
+            guard let spot = world.freeNapFurniture(place.furniture, for: self),
                   go(to: spot.surface, x: spot.x, then: next, world: world) else { return false }
             bedID = spot.id
             return true

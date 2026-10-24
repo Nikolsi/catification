@@ -82,6 +82,24 @@ final class WorldTests: XCTestCase {
         XCTAssertGreaterThan(report.day(of: "Ginger")?.seconds["drinking"] ?? 0, 0)
     }
 
+    /// A cat that loves clean laundry naps on top of the folded pile, and leaves its fur on it.
+    func testCleanLaundryGetsFurry() throws {
+        let stack = Furniture(kind: .laundryStack, x: 700, y: 0)
+        let world = World(furniture: Furniture.defaults(screenWidth: 1512, screenHeight: 982, floor: 0) + [stack])
+        var cat = CatConfig(name: "Smokey", coat: .gray, personality: .lazy)
+        var brain = CatBrain.preset(.lazy)
+        brain.places = [.cleanLaundry: 3, .bed: 0, .friends: 0]
+        brain.routines = []
+        cat.brain = brain
+        let smokey = try XCTUnwrap(world.spawn(character: cat))
+        world.run(for: 5)
+        world.act { smokey.goToSleep($0) }
+        world.run(for: 30)
+        let naps = world.report.day(of: "Smokey")?.naps ?? [:]
+        XCTAssertEqual(naps["cleanLaundry"], 1, "\(naps)")
+        XCTAssertNotNil(world.furniture.first { $0.kind == .laundryStack }?.fur)
+    }
+
     func testPettingIsCounted() throws {
         let world = World()
         let cat = try XCTUnwrap(world.spawn(character: CatConfig(name: "Ginger", coat: .ginger, personality: .affectionate)))

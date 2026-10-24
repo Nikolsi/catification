@@ -300,6 +300,7 @@ final class CatWorld {
         }
         updatePortals()
         updateFights(dt)
+        shedOnLaundry()
 
         for cat in cats { cat.sync(world: self) }
         syncFurnitureViews()
@@ -356,13 +357,20 @@ final class CatWorld {
                     let half = CGFloat(PropArt.postWidth - 2) / 2 * p
                     list.append(Surface(id: .perch(f.id), y: perchY, segments: [(x - half)...(x + half)], anchor: CGPoint(x: x, y: perchY)))
                     newLinks.append(ClimbLink(post: f.id, x: x, bottom: .ground, top: .perch(f.id)))
-                case .wardrobe, .closedBox:
-                    // Tall or closed things have a top cats can climb onto.
+                case .wardrobe, .closedBox, .laundryStack, .clothesChair:
+                    // Tall or closed things have a top cats can climb onto: on the chair, the heap of clothes.
                     guard let body = props[f.id], body.surface != nil else { break }
-                    let art = f.kind == .wardrobe ? PropArt.wardrobe(front: false) : PropArt.closedBox()
-                    let top = body.y + CGFloat(art.height - 2) * p
-                    let half = CGFloat(art.width - 2) / 2 * p - p
-                    list.append(Surface(id: .top(f.id), y: top, segments: [(body.x - half)...(body.x + half)], anchor: CGPoint(x: body.x, y: top)))
+                    let art: PropArt.Art
+                    switch f.kind {
+                    case .wardrobe: art = PropArt.wardrobe(front: false)
+                    case .laundryStack: art = PropArt.laundryStack()
+                    case .clothesChair: art = PropArt.clothesChair()
+                    default: art = PropArt.closedBox()
+                    }
+                    let top = body.y + CGFloat(f.kind == .clothesChair ? PropArt.chairTop : art.height - 2) * p
+                    let half = f.kind == .clothesChair ? 6 * p : CGFloat(art.width - 2) / 2 * p - p
+                    let centre = f.kind == .clothesChair ? body.x + 2 * p : body.x
+                    list.append(Surface(id: .top(f.id), y: top, segments: [(centre - half)...(centre + half)], anchor: CGPoint(x: centre, y: top)))
                 default:
                     break
                 }
@@ -580,9 +588,10 @@ final class CatWorld {
         case .trash:
             return furniture.filter { $0.kind == .trash }.compactMap { self.place($0.id, kind: .trash) }.randomElement(using: &Sim.rng)
                 .flatMap { beside($0.x, on: $0.surface) }
-        case .closedBox:
-            return furniture.filter { $0.kind == .closedBox }.randomElement(using: &Sim.rng).flatMap { box in
-                surfaces[.top(box.id)] != nil ? (SurfaceID.top(box.id), props[box.id]?.x ?? CGFloat(box.x)) : nil
+        case .closedBox, .cleanLaundry, .chair:
+            let kind: FurnitureKind = place == .closedBox ? .closedBox : (place == .chair ? .clothesChair : .laundryStack)
+            return furniture.filter { $0.kind == kind }.randomElement(using: &Sim.rng).flatMap { item in
+                surfaces[.top(item.id)].map { (SurfaceID.top(item.id), $0.anchor.x) }
             }
         case .bed, .high, .friends, .box, .laundry, .wardrobe, .flowerPot:
             return nil  // handled by the cat itself: furniture to curl up in, the top shelf or a sleeping friend
@@ -702,11 +711,12 @@ final class CatWorld {
         return (info, f.kind)
     }
 
-    func freeNapFurniture(_ kind: FurnitureKind, for cat: Cat) -> PlaceInfo? {
-        furniture.filter { $0.kind == kind }
-            .compactMap { place($0.id, kind: kind) }
+    /// The nearest free one, as a cat would pick.
+    func freeNapFurniture(_ kinds: [FurnitureKind], for cat: Cat) -> PlaceInfo? {
+        furniture.filter { kinds.contains($0.kind) }
+            .compactMap { place($0.id, kind: $0.kind) }
             .filter { spot in !cats.contains { $0 !== cat && $0.claims(bed: spot.id) } }
-            .randomElement(using: &Sim.rng)
+            .min { abs($0.x - cat.x) < abs($1.x - cat.x) }
     }
 
     /// How high above the furniture's bottom a napping cat lies, in points.
@@ -714,7 +724,7 @@ final class CatWorld {
         let p = geo.furniturePixel
         switch kind {
         case .box: return PropArt.boxNapLift * p
-        case .laundry: return PropArt.laundryNapLift * p
+        case .laundryBasket: return PropArt.basketNapLift * p
         case .wardrobe: return PropArt.wardrobeNapLift * p
         case .flowerPot: return PropArt.potNapLift * p
         default: return 2 * p
@@ -744,7 +754,7 @@ final class CatWorld {
                     gravity: 260, life: .random(in: 0.3...0.5, using: &Sim.looks), pixel: geo.furniturePixel)
     }
 
-    func freeBed(for cat: Cat) -> PlaceInfo? { freeNapFurniture(.bed, for: cat) }
+    func freeBed(for cat: Cat) -> PlaceInfo? { freeNapFurniture([.bed], for: cat) }
 
     /// One portion of food; false if the bowl is empty.
     func takeFood(from id: UUID) -> Bool {
@@ -864,13 +874,24 @@ final class CatWorld {
             guard let body = props[f.id] else { return nil }
             let art = PropArt.closedBox()
             return (art, nil, CGPoint(x: body.x - CGFloat(art.width) * p / 2, y: body.y - p), 6, "closedBox")
-        case .box, .laundry, .wardrobe, .flowerPot:
+        case .laundryStack:
+            guard let body = props[f.id] else { return nil }
+            let art = PropArt.laundryStack(fur: f.fur)
+            return (art, nil, CGPoint(x: body.x - CGFloat(art.width) * p / 2, y: body.y - p), 6, "stack\(f.fur.map { "\($0.bytes)" } ?? "")")
+        case .laundryBasket:
+            guard let body = props[f.id] else { return nil }
+            let art = PropArt.laundryBasket(front: false)
+            return (art, PropArt.laundryBasket(front: true), CGPoint(x: body.x - CGFloat(art.width) * p / 2, y: body.y - p), 6, "basket")
+        case .clothesChair:
+            guard let body = props[f.id] else { return nil }
+            let art = PropArt.clothesChair()
+            return (art, nil, CGPoint(x: body.x - CGFloat(art.width) * p / 2, y: body.y - p), 5, "chair")
+        case .box, .wardrobe, .flowerPot:
             guard let body = props[f.id] else { return nil }
             let occupied = cats.contains { $0.isAsleep && $0.bedID == f.id }
             let back: PropArt.Art, front: PropArt.Art
             switch f.kind {
             case .box: (back, front) = (PropArt.box(front: false), PropArt.box(front: true))
-            case .laundry: (back, front) = (PropArt.laundry(front: false), PropArt.laundry(front: true))
             case .wardrobe: (back, front) = (PropArt.wardrobe(front: false), PropArt.wardrobe(front: true))
             default:
                 // A cat napping in the pot squashes the plant.
@@ -921,7 +942,7 @@ final class CatWorld {
     }
 
     private func furnitureHit(at p: CGPoint) -> (UUID, FurnitureGrab)? {
-        let order: [FurnitureKind: Int] = [.bowl: 0, .fountain: 0, .flowerPot: 1, .trash: 2, .box: 3, .closedBox: 3, .laundry: 4, .bed: 5, .wardrobe: 6, .post: 7, .shelf: 8]
+        let order: [FurnitureKind: Int] = [.laundryStack: 2, .laundryBasket: 4, .clothesChair: 6, .bowl: 0, .fountain: 0, .flowerPot: 1, .trash: 2, .box: 3, .closedBox: 3, .bed: 5, .wardrobe: 6, .post: 7, .shelf: 8]
         let sorted = furniture.sorted { order[$0.kind]! < order[$1.kind]! }
         for f in sorted {
             guard let r = furnitureViews[f.id]?.frame, r.insetBy(dx: -6, dy: -6).contains(p) else { continue }
@@ -964,6 +985,25 @@ final class CatWorld {
         if kind.isProp { props[item.id] = PropBody(x: CGFloat(item.x), y: CGFloat(item.y)) }
         sparkle(at: CGPoint(x: x, y: y), kind: .sparkBlue, count: 8)
         commitFurniture()
+    }
+
+    /// Fresh from the wash: no more cat hair (for now).
+    func washLaundry(_ id: UUID) {
+        guard let i = furniture.firstIndex(where: { $0.id == id }) else { return }
+        furniture[i].fur = nil
+        if let body = props[id] { sparkle(at: CGPoint(x: body.x, y: body.y + 10), kind: .sparkBlue, count: 10) }
+        commitFurniture()
+    }
+
+    /// Cats sleeping on clean laundry leave their fur on it.
+    private func shedOnLaundry() {
+        for cat in cats where cat.isAsleep {
+            guard case .top(let id)? = cat.surface,
+                  let i = furniture.firstIndex(where: { $0.id == id && $0.kind == .laundryStack && $0.fur == nil }) else { continue }
+            furniture[i].fur = cat.config.appearance.fur
+            for _ in 0..<4 { spawnFluff(at: CGPoint(x: cat.x, y: cat.y + 4 * cat.pixel)) }
+            commitFurniture()
+        }
     }
 
     func removeFurniture(_ id: UUID) {
@@ -1181,6 +1221,9 @@ final class CatWorld {
     func rightMouseDown(at p: CGPoint, event: NSEvent, in view: NSView) {
         if editMode, let (id, _) = furnitureHit(at: p), let f = furniture.first(where: { $0.id == id }) {
             let menu = NSMenu()
+            if f.kind == .laundryStack, f.fur != nil {
+                menu.addItem(ActionItem(L("Wash the laundry")) { [weak self] in self?.washLaundry(id) })
+            }
             menu.addItem(ActionItem(String(format: L("Delete %@"), f.kind.title.lowercased())) { [weak self] in self?.removeFurniture(id) })
             NSMenu.popUpContextMenu(menu, with: event, for: view)
             return

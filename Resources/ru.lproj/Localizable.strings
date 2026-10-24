@@ -234,10 +234,8 @@
 "Naps wherever it happens to be." = "Спит там, где застанет сон.";
 "Add a spot" = "Добавить место";
 "1× a usual spot, ★ the very favourite." = "1× — обычное место, ★ — самое любимое.";
-"Pile of laundry" = "Гора вещей";
 "Wardrobe" = "Шкаф";
 "Flower pot" = "Цветочный горшок";
-"In the pile of laundry" = "В горе вещей";
 "On the wardrobe's bottom shelf" = "В шкафу на нижней полочке";
 "In the flower pot" = "В цветочном горшке";
 "Open box" = "Открытая коробка";
@@ -279,3 +277,11 @@
 "drinks water" = "пьёт воду";
 "Hugging the water fountain" = "В обнимку с фонтанчиком";
 "Drinks lying down by the fountain" = "Пьёт лёжа у фонтанчика";
+/* Laundry */
+"Clean laundry" = "Чистое бельё";
+"Laundry basket" = "Корзина для белья";
+"Chair with clothes" = "Стул с одеждой";
+"On the clean laundry" = "На чистом белье";
+"On the chair with clothes" = "На стуле с одеждой";
+"Wash the laundry" = "Постирать бельё";
+"In the laundry basket" = "В корзине с бельём";
