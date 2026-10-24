@@ -234,3 +234,38 @@ final class FurnitureView {
         outline.removeFromSuperlayer()
     }
 }
+
+/// Two cats wrestling, cartoon style: a shaking, tumbling ball of dust with their paws, tails
+/// and ears sticking out. The cats themselves are hidden meanwhile.
+@MainActor
+final class FightCloud {
+    private let layer = CALayer()
+    private let frames: [CGImage]
+    private var time = 0.0
+    private let pixel: CGFloat
+
+    init(_ a: CatAppearance, _ b: CatAppearance, pixel: CGFloat, root: CALayer) {
+        self.pixel = pixel
+        frames = FightArt.frames(a, b, count: 6, random: &Sim.looks)
+        layer.disableImplicitAnimations()
+        layer.magnificationFilter = .nearest
+        layer.bounds = CGRect(x: 0, y: 0, width: CGFloat(FightArt.W) * pixel, height: CGFloat(FightArt.H) * pixel)
+        layer.anchorPoint = CGPoint(x: 0.5, y: 0)
+        layer.zPosition = 26
+        layer.contents = frames.first
+        root.addSublayer(layer)
+    }
+
+    /// `bottom` is where the cats stand; the cloud shakes around it.
+    func update(dt: Double, bottom: CGPoint) {
+        time += dt
+        layer.contents = frames[Int(time * 10) % frames.count]
+        let shake = CGPoint(x: CGFloat(Int.random(in: -1...1, using: &Sim.looks)) * pixel,
+                            y: CGFloat(Int.random(in: 0...1, using: &Sim.looks)) * pixel)
+        layer.position = CGPoint(x: bottom.x + shake.x, y: bottom.y + shake.y)
+    }
+
+    func remove() {
+        layer.removeFromSuperlayer()
+    }
+}

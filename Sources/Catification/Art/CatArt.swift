@@ -3,7 +3,7 @@ import AppKit
 enum Anim: CaseIterable {
     case stand, blink, squish, walk, run, jump, crouch, crouchUp, swipe, sit, sitBlink, petted, groom, sleep, dangle
     case hang, climb, scratch, eat, peek
-    case sleepCurled, sleepSploot, sleepBelly, yawn, stretch
+    case sleepCurled, sleepSploot, sleepBelly, yawn, stretch, stalk
 
     var fps: Double {
         switch self {
@@ -26,6 +26,8 @@ enum Anim: CaseIterable {
         case .sleepBelly: 0.9
         case .yawn: 3
         case .stretch: 1.4
+        // Slower than walking, still 1px per frame so the paws don't slide.
+        case .stalk: 7
         case .dangle: 2.5
         case .blink, .squish, .jump, .sitBlink: 1
         }
@@ -48,6 +50,7 @@ enum Anim: CaseIterable {
         case .sleepBelly: (7, 4)
         case .yawn: (3, 11)
         case .stretch: (6, 8)
+        case .stalk: (5, 9)
         case .dangle: (-1, 14)
         }
     }
@@ -380,6 +383,16 @@ enum CatArt {
         f[.yawn] = [sitting(eyes: .closed, tail: tailSitA), sitting(eyes: .yawn, tail: tailSitA),
                     sitting(eyes: .yawnWide, tail: tailSitB), sitting(eyes: .yawn, tail: tailSitB)]
         f[.stretch] = [stretching(eyes: .closed), stretching(eyes: .yawnWide)]
+        // Creeping up on someone: low body, head down, tail low.
+        func low(_ tail: [(Int, Int)], _ legs: [Leg]) -> PixelCanvas {
+            standing(tail: tail, legs: legs, bodyY: 10, headY: 7, legY: 15, legHeight: 2)
+        }
+        f[.stalk] = [
+            low(tailCrouchA, legs(5, 10, 11, 16)),
+            low(tailCrouchA, legs(6, 9, 12, 15)),
+            low(tailCrouchB, legs(7, 8, 13, 14)),
+            low(tailCrouchB, legs(6, 9, 12, 15)),
+        ]
         return f
     }()
 

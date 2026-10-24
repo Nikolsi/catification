@@ -6,7 +6,7 @@ final class Cat {
     enum Activity {
         case stand, sit, groom, sleep
         case walk, run
-        case chase, flee, crouch, pounce, swipe
+        case chase, flee, crouch, pounce, swipe, wrestle
         case petted, greet
         case carried, falling
         case calculating, jumping, hanging, climbing, scratching, eating, hunting, rummaging
@@ -225,6 +225,7 @@ final class Cat {
 
     private func clearPlans() {
         ritual = nil
+        ambushing = false
         route = nil
         routeThen = nil
         hop = nil
@@ -285,7 +286,10 @@ final class Cat {
     private var napLift: CGFloat = 0
     private var visualLift: CGFloat { activity == .sleep && bedID != nil ? napLift : 0 }
 
-    private func walkSpeed(_ world: CatWorld) -> CGFloat { 11 * pixel * CGFloat(traits.speed * world.store.speed) }
+    private func walkSpeed(_ world: CatWorld) -> CGFloat {
+        // Sneaking up on someone is slower: 7 px/s, matching the stalking animation.
+        (ambushing ? 7 : 11) * pixel * CGFloat(traits.speed * world.store.speed)
+    }
     private func runSpeed(_ world: CatWorld) -> CGFloat { 38 * pixel * CGFloat(traits.speed * world.store.speed) }
     /// How sleepy this cat is: its napping habit (the personality's laziness, unless customised).
     private var sleepiness: Double { max(0.2, brain.habit(.nap)) }
@@ -340,9 +344,11 @@ final class Cat {
                 begin(.sit, for: .random(in: 2...4, using: &Sim.rng))
             }
         case .crouch:
-            guard let p = partner, p.isPlayable, p.surface == surface else { endPlay(); break }
+            guard let p = partner, p.isPlayable || ambushing, p.surface == surface else { endPlay(); break }
             face(p.x)
             if activityTime >= activityDuration { pounce(at: p.x, world: world) }
+        case .wrestle:
+            wrestle(dt, world)
         case .pounce, .falling, .jumping:
             fly(dt: dt, world: world)
         case .calculating:
@@ -378,7 +384,7 @@ final class Cat {
     private func tickStats(_ dt: Double, world: CatWorld) {
         switch activity {
         case .sleep: energy += 0.03 * dt
-        case .run, .chase, .flee, .pounce, .jumping, .climbing, .hunting, .rummaging: energy -= 0.01 * dt
+        case .run, .chase, .flee, .pounce, .jumping, .climbing, .hunting, .rummaging, .wrestle: energy -= 0.01 * dt
         case .walk: energy -= 0.0035 * dt
         default: energy -= 0.0012 * dt
         }
@@ -386,7 +392,7 @@ final class Cat {
 
         let needs = brain.needs
         switch activity {
-        case .chase, .flee, .crouch, .pounce, .greet, .petted: social -= 0.06 * dt
+        case .chase, .flee, .crouch, .pounce, .greet, .petted, .wrestle: social -= 0.06 * dt
         case .sleep: break
         default: social += needs.socialRate * dt
         }
@@ -924,7 +930,7 @@ final class Cat {
                 begin(.sleep, for: sleepDuration)
             }
         case .crouch:
-            guard let p = partner, p.isPlayable, p.surface == surface else {
+            guard let p = partner, p.isPlayable || ambushing, p.surface == surface else {
                 endPlay()
                 return
             }
@@ -1136,10 +1142,19 @@ final class Cat {
         case .pounce:
             if huntKind != nil {
                 begin(.hunting)
+            } else if ambushing, let p = partner, p.surface == surface, abs(p.x - x) < 34 * pixel {
+                // Landed right on the sleeper.
+                ambushing = false
+                p.wasAmbushed = true
+                startWrestle(with: p, world: world)
             } else if let p = partner, p.isPlayable, p.surface == surface, abs(p.x - x) < 34 * pixel {
-                let d = Double.random(in: 2.5...5, using: &Sim.rng)
-                p.startFlee(from: self, duration: d, world: world)
-                begin(.chase, for: d)
+                if Double.random(in: 0..<1, using: &Sim.rng) < min(0.8, 0.35 * traits.playfulness) {
+                    startWrestle(with: p, world: world)
+                } else {
+                    let d = Double.random(in: 2.5...5, using: &Sim.rng)
+                    p.startFlee(from: self, duration: d, world: world)
+                    begin(.chase, for: d)
+                }
             } else {
                 endPlay()
             }
@@ -1504,11 +1519,110 @@ final class Cat {
         }
     }
 
+    // MARK: Rough and tumble
+
+    /// Where a wrestling pair rolls around, and which of the two started it.
+    private var wrestleCentre: CGFloat = 0
+    private var wrestleSide: CGFloat = 1
+    private var startedWrestle = false
+
+    private func startWrestle(with mate: Cat, world: CatWorld) {
+        let duration = Double.random(in: 2.2...3.6, using: &Sim.rng)
+        let centre = (x + mate.x) / 2
+        let side: CGFloat = x < mate.x ? -1 : 1
+        for (cat, s, starter) in [(self, side, true), (mate, -side, false)] {
+            cat.partner = cat === self ? mate : self
+            cat.route = nil
+            cat.routeThen = nil
+            cat.wrestleCentre = centre
+            cat.wrestleSide = s
+            cat.startedWrestle = starter
+            // The one who started it sorts out the ending, so the other one waits a little longer.
+            cat.begin(.wrestle, for: starter ? duration : duration + 1)
+        }
+        world.startFight(self, mate, at: CGPoint(x: centre, y: y))
+        world.note("wrestle", cat: self)
+    }
+
+    private func wrestle(_ dt: Double, _ world: CatWorld) {
+        guard let p = partner, p.activity == .wrestle, p.surface == surface, let s = surface else {
+            relaxAfterPlay()
+            return
+        }
+        // The cloud rolls back and forth; the cats inside it come out wherever it ends up.
+        let roll = CGFloat(sin((startedWrestle ? activityTime : p.activityTime) * 4.5)) * 7 * pixel
+        x = world.clampOnSurface(wrestleCentre + roll + wrestleSide * 4 * pixel, s, for: self)
+        guard startedWrestle else { return }
+        world.moveFight(of: self, to: CGPoint(x: wrestleCentre + roll, y: y))
+        if Double.random(in: 0..<1, using: &Sim.looks) < dt * 5 {
+            world.spawnFluff(at: CGPoint(x: wrestleCentre + roll + .random(in: -10...10, using: &Sim.looks) * pixel, y: y + 8 * pixel))
+        }
+        guard activityTime >= activityDuration else { return }
+        if p.wasAmbushed {
+            // Woken up like that: they spring apart, and the sleeper is cross about it.
+            p.wasAmbushed = false
+            springAway(from: p, world: world)
+            p.springAway(from: self, world: world)
+            p.getCross(at: self, world: world)
+            pendingAction = (.groom, world.now + 20)  // "who, me?"
+        } else if Double.random(in: 0..<1, using: &Sim.rng) < 0.6, energy > 0.25, p.energy > 0.25 {
+            // Off they go: one runs, the other gives chase.
+            let d = Double.random(in: 2...4, using: &Sim.rng)
+            p.startFlee(from: self, duration: d, world: world)
+            begin(.chase, for: d)
+        } else {
+            // As if nothing happened.
+            p.relaxAfterPlay()
+            relaxAfterPlay()
+        }
+    }
+
     private func endPlay() {
         partner = nil
+        ambushing = false
         route = nil
         routeThen = nil
         begin(.stand, for: .random(in: 1...2.5, using: &Sim.rng))
+        if let other = glaringAt {
+            // Still cross, and makes sure the other one sees it.
+            face(other.x)
+            showEmote(.anger, for: 2.5)
+            glaringAt = nil
+        }
+    }
+
+    // MARK: Ambush
+
+    /// Sneaking up on a sleeping friend to pounce on it.
+    private var ambushing = false
+    /// Was asleep when the other one pounced.
+    private var wasAmbushed = false
+    private weak var glaringAt: Cat?
+
+    /// Creeps up on a sleeping cat, crouches and pounces on it; then a wrestle, and a cross friend.
+    func ambush(_ sleeper: Cat, world: CatWorld) {
+        guard sleeper !== self, sleeper.surface == surface, surface != nil else { return }
+        partner = sleeper
+        ambushing = true
+        showEmote(.note, for: 1)
+        let side: CGFloat = x < sleeper.x ? -1 : 1
+        let p = partner
+        walk(to: sleeper.x + side * 24 * pixel, then: .crouch, world: world)  // walking, not running: sneaking
+        partner = p
+    }
+
+    private func springAway(from other: Cat, world: CatWorld) {
+        partner = nil
+        let away: CGFloat = x < other.x ? -1 : 1
+        pounce(at: x + away * 30 * pixel, height: 9, world: world)
+    }
+
+    private func getCross(at other: Cat, world: CatWorld) {
+        grumpyTime = max(grumpyTime, 20)
+        happiness = max(0, happiness - 0.2)
+        glaringAt = other
+        showEmote(.anger, for: 3)
+        world.spawnFightSymbols(from: self, count: 3)
     }
 
     private func checkGreeting(_ world: CatWorld) {
@@ -1721,12 +1835,13 @@ final class Cat {
             case .sploot: return .sleepSploot
             case .bellyUp: return .sleepBelly
             }
-        case .walk: return .walk
+        case .walk: return ambushing ? .stalk : .walk
         case .run, .chase, .flee: return .run
         case .crouch: return .crouch
         case .calculating: return calcLooksUp ? .crouchUp : .crouch
         case .pounce, .falling, .jumping: return .jump
         case .swipe: return .swipe
+        case .wrestle: return .crouch  // hidden in the fight cloud
         case .petted, .greet: return .petted
         case .carried: return .dangle
         case .hanging: return .hang
@@ -1756,6 +1871,9 @@ final class Cat {
             ghost.contents = image
             shownImage = image
         }
+        // Wrestling cats are inside the fight cloud.
+        let hidden = activity == .wrestle
+        if layer.isHidden != hidden { layer.isHidden = hidden }
 
         let size = canvasSize
         let px = (x * 2).rounded() / 2
