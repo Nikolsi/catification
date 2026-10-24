@@ -96,6 +96,9 @@ final class BrainTests: XCTestCase {
         brain.habits[.rummage] = 2.5
         brain.places[.high] = 1.5
         brain.phrases[.ate] = ["Finally."]
+        brain.sleepPose = .bellyUp
+        brain.drinksLyingDown = true
+        brain.places[.fountain] = 3
         let data = try JSONEncoder().encode(brain)
         XCTAssertEqual(try JSONDecoder().decode(CatBrain.self, from: data), brain)
         // Enum-keyed dictionaries are written as readable JSON objects, not arrays.

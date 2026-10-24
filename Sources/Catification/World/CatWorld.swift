@@ -571,6 +571,12 @@ final class CatWorld {
             return surfaceUnder(mouse).flatMap { beside($0.x, on: $0.surface) }
         case .bowl:
             return nearestBowl(for: cat).flatMap { beside($0.x, on: $0.surface) }
+        case .fountain:
+            // Paws stretched round it, the head beside it so the fountain stays in view.
+            return nearestFountain(for: cat).map { spot in
+                let side: CGFloat = cat.x < spot.x ? -1 : 1
+                return (spot.surface, clampOnSurface(spot.x + side * 13 * cat.pixel, spot.surface, for: cat))
+            }
         case .trash:
             return furniture.filter { $0.kind == .trash }.compactMap { self.place($0.id, kind: .trash) }.randomElement(using: &Sim.rng)
                 .flatMap { beside($0.x, on: $0.surface) }
@@ -721,6 +727,23 @@ final class CatWorld {
             .min { abs($0.x - cat.x) < abs($1.x - cat.x) }
     }
 
+    var hasFountain: Bool { geo.mode.hasFurniture && furniture.contains { $0.kind == .fountain } }
+
+    func fountain(_ id: UUID) -> PlaceInfo? { place(id, kind: .fountain) }
+
+    func nearestFountain(for cat: Cat) -> PlaceInfo? {
+        furniture.filter { $0.kind == .fountain }
+            .compactMap { fountain($0.id) }
+            .filter { spot in !cats.contains { $0 !== cat && $0.drinkingAt == spot.id } }
+            .min { abs($0.x - cat.x) < abs($1.x - cat.x) }
+    }
+
+    /// A little splash while a cat laps at the fountain.
+    func spawnDrop(at point: CGPoint) {
+        addParticle(.drop, at: point, velocity: CGVector(dx: .random(in: -25...25, using: &Sim.looks), dy: .random(in: 30...70, using: &Sim.looks)),
+                    gravity: 260, life: .random(in: 0.3...0.5, using: &Sim.looks), pixel: geo.furniturePixel)
+    }
+
     func freeBed(for cat: Cat) -> PlaceInfo? { freeNapFurniture(.bed, for: cat) }
 
     /// One portion of food; false if the bowl is empty.
@@ -855,6 +878,11 @@ final class CatWorld {
             }
             return (back, front, CGPoint(x: body.x - CGFloat(back.width) * p / 2, y: body.y - p), 6,
                     "\(f.kind.rawValue)\(f.kind == .flowerPot && occupied)")
+        case .fountain:
+            guard let body = props[f.id] else { return nil }
+            let frame = Int(now * 5) % 3
+            let art = PropArt.fountain(frame: frame)
+            return (art, nil, CGPoint(x: body.x - CGFloat(art.width) * p / 2, y: body.y - p), 9, "fountain\(frame)")
         case .bowl:
             guard let body = props[f.id] else { return nil }
             let level = f.food >= 0.6 ? 2 : (f.food > 0.05 ? 1 : 0)
@@ -893,7 +921,7 @@ final class CatWorld {
     }
 
     private func furnitureHit(at p: CGPoint) -> (UUID, FurnitureGrab)? {
-        let order: [FurnitureKind: Int] = [.bowl: 0, .flowerPot: 1, .trash: 2, .box: 3, .closedBox: 3, .laundry: 4, .bed: 5, .wardrobe: 6, .post: 7, .shelf: 8]
+        let order: [FurnitureKind: Int] = [.bowl: 0, .fountain: 0, .flowerPot: 1, .trash: 2, .box: 3, .closedBox: 3, .laundry: 4, .bed: 5, .wardrobe: 6, .post: 7, .shelf: 8]
         let sorted = furniture.sorted { order[$0.kind]! < order[$1.kind]! }
         for f in sorted {
             guard let r = furnitureViews[f.id]?.frame, r.insetBy(dx: -6, dy: -6).contains(p) else { continue }

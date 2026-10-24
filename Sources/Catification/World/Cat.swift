@@ -9,7 +9,7 @@ final class Cat {
         case chase, flee, crouch, pounce, swipe, wrestle
         case petted, greet
         case carried, falling
-        case calculating, jumping, hanging, climbing, scratching, eating, hunting, rummaging
+        case calculating, jumping, hanging, climbing, scratching, eating, hunting, rummaging, drinking
     }
 
     enum HuntKind { case laser, ball, butterfly }
@@ -94,6 +94,8 @@ final class Cat {
     // Places and toys.
     private(set) var bedID: UUID?
     private var bowlID: UUID?
+    /// The fountain this cat is drinking from, or on its way to.
+    private(set) var drinkingAt: UUID?
     private var scratchPost: UUID?
     private(set) var huntKind: HuntKind?
     private(set) var huntTargetID: UUID?
@@ -122,6 +124,8 @@ final class Cat {
     private(set) var energy = Double.random(in: 0.55...1, using: &Sim.rng)
     private(set) var happiness = 0.6
     private(set) var hunger = Double.random(in: 0...0.3, using: &Sim.rng)
+    /// 0…1; rises over time, faster after running about. Only matters when there's a fountain.
+    private(set) var thirst = 0.2
     private var grumpyTime = 0.0
     private var recentSquish = 0.0
     private var strokeAmount: CGFloat = 0
@@ -367,6 +371,8 @@ final class Cat {
                 finishEating()
                 react(to: .ate, world: world)
             }
+        case .drinking:
+            drink(dt, world)
         case .hunting:
             hunt(dt, world)
         case .rummaging:
@@ -405,6 +411,10 @@ final class Cat {
         curiosity = min(1, max(0, curiosity))
 
         if world.hasBowl, activity != .eating { hunger = min(1, hunger + dt / 700) }
+        if world.hasFountain, activity != .drinking {
+            let busy = [.run, .chase, .flee, .wrestle, .pounce, .hunting].contains(activity)
+            thirst = min(1, thirst + dt / 2400 * (busy ? 3 : 1))
+        }
         happiness += (0.55 - happiness) * 0.003 * dt
         grumpyTime = max(0, grumpyTime - dt)
         recentSquish = max(0, recentSquish - 0.3 * dt)
@@ -471,6 +481,7 @@ final class Cat {
             FileHandle.standardError.write("\(t) \(config.name): \(a) on \(surface.map { "\($0)" } ?? "-") x=\(Int(x)) y=\(Int(y))\n".data(using: .utf8)!)
         }
         if a != .sleep { bedID = nil }
+        if a != .drinking, a != .walk, a != .run, a != .jumping, a != .calculating, a != .climbing { drinkingAt = nil }
         if a == .sleep, activity != .sleep, surface != nil {
             choosePose(inFurniture: false)
             // Sleepy cats often yawn before lying down.
@@ -549,10 +560,11 @@ final class Cat {
         if world.hasOtherSurfaces { available.insert(.explore) }
         if world.hasPosts { available.insert(.scratch) }
         if world.hasTrash { available.insert(.rummage) }
+        if world.hasFountain, thirst > 0.35 { available.insert(.drink) }
         if !grumpy, energy > 0.35, world.playmate(for: self) != nil { available.insert(.play) }
         if !grumpy, energy > 0.3, world.ballInfo != nil { available.insert(.chaseBall) }
         if world.mouseNearCats { available.insert(.visitCursor) }
-        return PlannerContext(energy: energy, social: social, curiosity: curiosity, grumpy: grumpy, hour: Sim.hour, available: available)
+        return PlannerContext(energy: energy, social: social, curiosity: curiosity, grumpy: grumpy, thirst: thirst, hour: Sim.hour, available: available)
     }
 
     /// Starts an action chosen by the planner or a reaction. False if it can't happen right now.
@@ -591,6 +603,8 @@ final class Cat {
             startHunting(.ball, world: world)
         case .visitCursor:
             return comeToCursor(world)
+        case .drink:
+            return goDrink(world)
         }
         return true
     }
@@ -689,6 +703,7 @@ final class Cat {
         case .zoomies: return start(.zoomies, world: world) ? .started : .failed
         case .wander: return start(.wander, world: world) ? .started : .failed
         case .followCursor: return start(.visitCursor, world: world) ? .started : .failed
+        case .drink: return start(.drink, world: world) ? .started : .failed
         case .emote(let e):
             showEmote(e.kind, for: 1.6)
             return .instant
@@ -744,6 +759,7 @@ final class Cat {
 
     func goToSleep(_ world: CatWorld, here: Bool = false) {
         guard canInteract, surface != nil else { return }
+        huggingFountain = false
         partner = nil
         huntKind = nil
         if !here {
@@ -776,6 +792,7 @@ final class Cat {
 
     /// Goes to a kind of place, to sleep there (or, for recipes, to sit).
     private func nap(at place: CatPlace, _ world: CatWorld, then next: Activity = .sleep) -> Bool {
+        huggingFountain = place == .fountain && next == .sleep
         switch place {
         case .bed:
             guard let bed = world.freeBed(for: self), go(to: bed.surface, x: bed.x, then: next, world: world) else { return false }
@@ -813,6 +830,8 @@ final class Cat {
     // MARK: - Looks
 
     private var sleepPose: SleepPose = .loaf
+    /// Off to nap right up against the water fountain, paws stretched round it.
+    private var huggingFountain = false
     /// Demo recordings: always sleep like this.
     var demoPose: SleepPose?
     /// Seconds left of a yawn (sitting, or just before lying down) and of a stretch (after waking).
@@ -825,6 +844,10 @@ final class Cat {
     private func choosePose(inFurniture: Bool) {
         if let demoPose {
             sleepPose = demoPose
+            return
+        }
+        if huggingFountain {
+            sleepPose = .sploot
             return
         }
         let options: [(SleepPose, Double)] = inFurniture
@@ -944,6 +967,8 @@ final class Cat {
             begin(.sit, for: .random(in: 4...9, using: &Sim.rng))
         case .eating:
             startEating(world)
+        case .drinking:
+            startDrinking(world)
         case .scratching:
             startScratching(world)
         case .hunting:
@@ -1252,6 +1277,42 @@ final class Cat {
         let side: CGFloat = x < bowl.x ? -1 : 1
         bowlID = bowl.id
         return go(to: bowl.surface, x: bowl.x + side * 9 * pixel, then: .eating, world: world)
+    }
+
+    // MARK: Drinking
+
+    private func goDrink(_ world: CatWorld) -> Bool {
+        guard let fountain = world.nearestFountain(for: self) else { return false }
+        let side: CGFloat = x < fountain.x ? -1 : 1
+        drinkingAt = fountain.id
+        // Drinking from the edge of the bowl, so the fountain stays in view (lying down, a paw round it).
+        return go(to: fountain.surface, x: fountain.x + side * (brain.drinksLyingDown ? 13 : 11) * pixel, then: .drinking, world: world)
+    }
+
+    private func startDrinking(_ world: CatWorld) {
+        guard let id = drinkingAt, let fountain = world.fountain(id), fountain.surface == surface, abs(fountain.x - x) < 20 * pixel else {
+            drinkingAt = nil
+            decide(world)
+            return
+        }
+        face(fountain.x)
+        // Lying down to drink takes longer: there's no hurry.
+        begin(.drinking, for: brain.drinksLyingDown ? .random(in: 6...10, using: &Sim.rng) : .random(in: 3...5, using: &Sim.rng))
+    }
+
+    private func drink(_ dt: Double, _ world: CatWorld) {
+        if let id = drinkingAt, let fountain = world.fountain(id), Double.random(in: 0..<1, using: &Sim.looks) < dt * 3 {
+            world.spawnDrop(at: CGPoint(x: fountain.x, y: y + 9 * world.geo.furniturePixel))
+        }
+        guard activityTime >= activityDuration else { return }
+        thirst = 0
+        drinkingAt = nil
+        // A lick of the lips, or a wash.
+        if Bool.random(using: &Sim.rng) {
+            begin(.groom, for: .random(in: 1.5...3, using: &Sim.rng))
+        } else {
+            begin(.sit, for: .random(in: 2...4, using: &Sim.rng))
+        }
     }
 
     private func startEating(_ world: CatWorld) {
@@ -1848,6 +1909,7 @@ final class Cat {
         case .climbing: return .climb
         case .scratching: return .scratch
         case .eating: return .eat
+        case .drinking: return brain.drinksLyingDown ? .drinkLying : .drink
         case .hunting:
             if huntMoving { return .run }
             return huntKind == .butterfly ? .crouchUp : .crouch

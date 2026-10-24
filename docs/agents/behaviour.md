@@ -8,6 +8,8 @@ A cat's character is data (`CatBrain`), not code. The app runs it locally and de
    mood, the hour and which actions make sense right now (a post exists, a playmate is free…).
 2. `UtilityPlanner.scores` multiplies, per `CatAction`: base weight × habit × current state × needs × active routines.
 3. `UtilityPlanner.pick` chooses at random in proportion to the scores, so cats are likely, not robotic.
+   Thirst works the same way as energy: it rises over time (faster after running about), and
+   with a fountain in the room `.drink` becomes available once the cat is thirsty enough.
 4. `Cat.perform(_:world:)` runs the action through the existing methods (`goToSleep`, `goRummage`, `startPlay`…).
 
 `CATIFICATION_DEBUG=1 make dev` logs every activity change with the scores.

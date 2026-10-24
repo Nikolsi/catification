@@ -105,6 +105,8 @@ enum RecipeStep: Codable, Hashable {
     case groom(seconds: Double)
     case wait(seconds: Double)
     case rummage, scratch, zoomies, wander
+    /// A drink at the fountain.
+    case drink
     /// Come over to the cursor.
     case followCursor
     case emote(RecipeEmote)
@@ -130,6 +132,7 @@ enum RecipeStep: Codable, Hashable {
         case "scratch": self = .scratch
         case "zoomies": self = .zoomies
         case "wander": self = .wander
+        case "drink": self = .drink
         case "followCursor": self = .followCursor
         case "emote": self = value.string.flatMap(RecipeEmote.init(rawValue:)).map { .emote($0) } ?? .unknown(raw)
         case "say": self = value.string.map { .say($0) } ?? .unknown(raw)
@@ -149,6 +152,7 @@ enum RecipeStep: Codable, Hashable {
         case .scratch: json = .object(["scratch": .bool(true)])
         case .zoomies: json = .object(["zoomies": .bool(true)])
         case .wander: json = .object(["wander": .bool(true)])
+        case .drink: json = .object(["drink": .bool(true)])
         case .followCursor: json = .object(["followCursor": .bool(true)])
         case .emote(let e): json = .object(["emote": .string(e.rawValue)])
         case .say(let s): json = .object(["say": .string(s)])

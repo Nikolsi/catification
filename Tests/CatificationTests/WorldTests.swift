@@ -75,6 +75,13 @@ final class WorldTests: XCTestCase {
         XCTAssertGreaterThan(report.cats.reduce(0) { $0 + ($1.seconds["wrestle"] ?? 0) }, 0)
     }
 
+    /// The default room has a water fountain; cats get thirsty, more so after running about, and drink.
+    func testCatsDrinkFromTheFountain() {
+        let report = day(minutes: 60, [CatConfig(name: "Ginger", coat: .ginger, personality: .playful)])
+        XCTAssertGreaterThan(report.day(of: "Ginger")?.count(.drink) ?? 0, 0)
+        XCTAssertGreaterThan(report.day(of: "Ginger")?.seconds["drinking"] ?? 0, 0)
+    }
+
     func testPettingIsCounted() throws {
         let world = World()
         let cat = try XCTUnwrap(world.spawn(character: CatConfig(name: "Ginger", coat: .ginger, personality: .affectionate)))

@@ -3,12 +3,13 @@ import Foundation
 
 /// Something a cat can decide to do. Each one maps onto an existing behaviour in `Cat`.
 enum CatAction: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiable {
-    case idle, sit, groom, wander, explore, zoomies, nap, scratch, rummage, play, chaseBall, visitCursor
+    case idle, sit, groom, wander, explore, zoomies, nap, scratch, rummage, play, chaseBall, visitCursor, drink
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
+        case .drink: L("Drinks water")
         case .idle: L("Stand around")
         case .sit: L("Sit")
         case .groom: L("Groom")
@@ -27,7 +28,7 @@ enum CatAction: String, Codable, CaseIterable, CodingKeyRepresentable, Identifia
 
 /// Favourite places, used when a cat picks somewhere to nap.
 enum CatPlace: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiable {
-    case bed, high, friends, perch, shelf, menuBar, floor, windows, cursor, bowl, trash, box, closedBox, laundry, wardrobe, flowerPot
+    case bed, high, friends, perch, shelf, menuBar, floor, windows, cursor, bowl, trash, box, closedBox, laundry, wardrobe, flowerPot, fountain
 
     var id: String { rawValue }
 
@@ -49,6 +50,7 @@ enum CatPlace: String, Codable, CaseIterable, CodingKeyRepresentable, Identifiab
         case .laundry: L("In the pile of laundry")
         case .wardrobe: L("On the wardrobe's bottom shelf")
         case .flowerPot: L("In the flower pot")
+        case .fountain: L("Hugging the water fountain")
         }
     }
 
@@ -236,6 +238,8 @@ struct CatBrain: Codable, Hashable {
     var recipes: [Recipe] = []
     /// The favourite way to lie when sleeping; nil if it varies.
     var sleepPose: SleepPose?
+    /// Lies down next to the fountain, a paw round it, and drinks lying down.
+    var drinksLyingDown = false
     var phrases: [PhraseSituation: [String]] = [:]
 
     init() {}
@@ -256,6 +260,7 @@ struct CatBrain: Codable, Hashable {
         reactions = try c.decodeIfPresent([Reaction].self, forKey: .reactions) ?? []
         recipes = (try? c.decodeIfPresent([Recipe].self, forKey: .recipes)) ?? []
         sleepPose = (try? c.decodeIfPresent(String.self, forKey: .sleepPose)).flatMap(SleepPose.init(rawValue:))
+        drinksLyingDown = (try? c.decodeIfPresent(Bool.self, forKey: .drinksLyingDown)) ?? false
         phrases = known(try c.decodeIfPresent([String: [String]].self, forKey: .phrases), PhraseSituation.self)
     }
 

@@ -26,7 +26,7 @@ enum WorldMode: String, Codable, CaseIterable, Identifiable {
 }
 
 enum FurnitureKind: String, Codable, CaseIterable, Identifiable {
-    case shelf, post, bed, bowl, trash, box, closedBox, laundry, wardrobe, flowerPot
+    case shelf, post, bed, bowl, trash, box, closedBox, laundry, wardrobe, flowerPot, fountain
 
     var id: String { rawValue }
 
@@ -42,6 +42,7 @@ enum FurnitureKind: String, Codable, CaseIterable, Identifiable {
         case .laundry: L("Pile of laundry")
         case .wardrobe: L("Wardrobe")
         case .flowerPot: L("Flower pot")
+        case .fountain: L("Water fountain")
         }
     }
 
@@ -99,6 +100,7 @@ struct Furniture: Codable, Identifiable, Hashable {
         let lounge = Furniture(kind: .shelf, x: w * 0.08, y: floor + 190, width: 230)
         items.append(lounge)
         items.append(Furniture(kind: .bowl, x: w * 0.3, y: floor))
+        items.append(Furniture(kind: .fountain, x: w * 0.3 + 60, y: floor))
         // Where the Dock's Trash usually is.
         items.append(Furniture(kind: .trash, x: w - 70, y: floor))
         return items

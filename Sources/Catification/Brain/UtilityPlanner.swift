@@ -7,6 +7,8 @@ struct PlannerContext {
     var social = 0.5
     var curiosity = 0.5
     var grumpy = false
+    /// 0…1; only matters when there's a fountain.
+    var thirst = 0.0
     var hour = Calendar.current.component(.hour, from: Date())
     /// Actions that make sense right now (there is a post, a playmate, a ball…).
     var available: Set<CatAction>
@@ -18,7 +20,7 @@ enum UtilityPlanner {
     /// The appeal of each action before habits, needs and routines.
     static let baseWeights: [CatAction: Double] = [
         .idle: 1.0, .sit: 1.5, .groom: 0.7, .wander: 1.6, .explore: 1.3, .zoomies: 0.45, .nap: 2.2,
-        .scratch: 0.6, .rummage: 0.5, .play: 1.4, .chaseBall: 0.8, .visitCursor: 1.6,
+        .scratch: 0.6, .rummage: 0.5, .play: 1.4, .chaseBall: 0.8, .visitCursor: 1.6, .drink: 1.2,
     ]
 
     /// Which need each action satisfies; used to sway choices by how lonely or bored a cat is.
@@ -48,6 +50,7 @@ enum UtilityPlanner {
         case .zoomies: c.energy * (c.grumpy ? 0.3 : 1)
         case .nap: 1.1 - c.energy
         case .play, .chaseBall: c.energy
+        case .drink: c.thirst * 2
         default: 1
         }
     }
