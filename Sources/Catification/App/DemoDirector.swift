@@ -22,7 +22,7 @@ final class DemoDirector {
             case .play: 11
             case .naps: 10
             case .poses: 22
-            case .ambush: 15
+            case .ambush: 15.5
             case .trailer: 22
             case .windows: 20
             }
@@ -183,8 +183,11 @@ final class DemoDirector {
             world.setDemoStage(stage, floor: 0, notch: CGRect(x: notch.lowerBound, y: world.geo.menuBarY,
                                                               width: notch.upperBound - notch.lowerBound, height: world.geo.menuBarHeight))
         } else if scene == .poses || scene == .ambush {
-            // A low strip: everything happens on the floor, so the cats look big.
-            stage = CGRect(x: Self.room.minX, y: Self.room.minY, width: Self.room.width, height: 120)
+            // A low strip: everything happens on the floor, so the cats look big. The ambush needs
+            // even less room: just around the two cats.
+            stage = scene == .ambush
+                ? CGRect(x: Self.room.minX + 50, y: Self.room.minY, width: 280, height: 120)
+                : CGRect(x: Self.room.minX, y: Self.room.minY, width: Self.room.width, height: 120)
             world.setDemoStage(stage, floor: Self.floor, notch: nil)
         } else {
             stage = Self.room
@@ -405,7 +408,7 @@ final class DemoDirector {
         case .naps: return [r.minX + 90, r.minX + 170, r.minX + 250, r.minX + 330, r.minX + 340]
         case .windows: return []
         case .poses: return [r.minX + 60, r.minX + 160, r.minX + 270, r.minX + 380]
-        case .ambush: return [r.minX + 120, r.minX + 220]
+        case .ambush: return [r.minX + 150, r.minX + 230]
         case .trailer:
             guard let stage = world?.demoStage else { return [] }
             return [stage.minX + 40, stage.minX + 130]
