@@ -216,6 +216,8 @@ struct CatBrain: Codable, Hashable {
     var needs = NeedSettings()
     var routines: [Routine] = []
     var reactions: [Reaction] = []
+    /// Habits made of several steps ("rituals" in the editor).
+    var recipes: [Recipe] = []
     var phrases: [PhraseSituation: [String]] = [:]
 
     init() {}
@@ -234,6 +236,7 @@ struct CatBrain: Codable, Hashable {
         needs = try c.decodeIfPresent(NeedSettings.self, forKey: .needs) ?? NeedSettings()
         routines = try c.decodeIfPresent([Routine].self, forKey: .routines) ?? []
         reactions = try c.decodeIfPresent([Reaction].self, forKey: .reactions) ?? []
+        recipes = (try? c.decodeIfPresent([Recipe].self, forKey: .recipes)) ?? []
         phrases = known(try c.decodeIfPresent([String: [String]].self, forKey: .phrases), PhraseSituation.self)
     }
 

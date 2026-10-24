@@ -14,6 +14,8 @@ final class DayReport {
         var naps: [String: Int] = [:]
         /// Jumps, calculations, hangs, falls, portals.
         var moments: [String: Int] = [:]
+        /// Recipes started, by name.
+        var recipes: [String: Int] = [:]
 
         func count(_ action: CatAction) -> Int { actions[action.rawValue] ?? 0 }
     }
@@ -32,6 +34,7 @@ final class DayReport {
     func decided(_ action: CatAction, cat: Cat) { update(cat) { $0.actions[action.rawValue, default: 0] += 1 } }
     func napped(at place: CatPlace?, cat: Cat) { update(cat) { $0.naps[place?.rawValue ?? "here", default: 0] += 1 } }
     func moment(_ name: String, cat: Cat) { update(cat) { $0.moments[name, default: 0] += 1 } }
+    func recipe(_ name: String, cat: Cat) { update(cat) { $0.recipes[name, default: 0] += 1 } }
 
     private func update(_ cat: Cat, _ change: (inout CatDay) -> Void) {
         let i = index[cat.id] ?? {
@@ -57,6 +60,7 @@ final class DayReport {
             out += "  time:    \(time)\n"
             if !cat.naps.isEmpty { out += "  naps:    \(list(cat.naps))\n" }
             if !cat.moments.isEmpty { out += "  moments: \(list(cat.moments))\n" }
+            if !cat.recipes.isEmpty { out += "  rituals: \(list(cat.recipes))\n" }
         }
         return out
     }

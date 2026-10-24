@@ -224,6 +224,7 @@ final class Cat {
     }
 
     private func clearPlans() {
+        ritual = nil
         route = nil
         routeThen = nil
         hop = nil
@@ -314,7 +315,7 @@ final class Cat {
                 if huntKind != nil { begin(.hunting) } else { decide(world) }
             }
         case .sleep:
-            if !demoNoWake, activityTime >= activityDuration || (energy >= 1 && activityTime > 12) {
+            if !demoNoWake, activityTime >= activityDuration || (!sleepsItOut && energy >= 1 && activityTime > 12) {
                 wakeUp()
                 react(to: .wokeUp, world: world)
             }
@@ -452,6 +453,7 @@ final class Cat {
             FileHandle.standardError.write("\(t) \(config.name): \(a) on \(surface.map { "\($0)" } ?? "-") x=\(Int(x)) y=\(Int(y))\n".data(using: .utf8)!)
         }
         if a != .sleep { bedID = nil }
+        sleepsItOut = false
         activity = a
         activityTime = 0
         activityDuration = duration
@@ -481,21 +483,39 @@ final class Cat {
         }
         if hunger > 0.65, goEat(world) { return }
 
+        // The next step of a recipe in progress ("zoomies, then a wash").
+        if continueRecipe(world) { return }
+
         // Something a reaction asked for earlier ("after being petted, follow the cursor").
         if let pending = pendingAction {
             pendingAction = nil
             if world.now < pending.expires, perform(pending.action, world: world) { return }
         }
 
-        var scores = UtilityPlanner.scores(brain: brain, context: plannerContext(world))
+        let scores = UtilityPlanner.scores(brain: brain, context: plannerContext(world))
         if Self.debugLog {
             let top = scores.sorted { $0.score > $1.score }.prefix(4).map { "\($0.action.rawValue) \(String(format: "%.2f", $0.score))" }
             FileHandle.standardError.write("    \(config.name) weighs: \(top.joined(separator: ", "))\n".data(using: .utf8)!)
         }
-        // Try actions in weighted-random order until one works out.
-        while let action = UtilityPlanner.pick(from: scores, random: .random(in: 0..<1, using: &Sim.rng)) {
-            if perform(action, world: world) { return }
-            scores.removeAll { $0.action == action }
+        // Recipes for this time of day compete with the actions.
+        enum Choice { case action(CatAction), recipe(Recipe) }
+        var options: [(Choice, Double)] = scores.map { (.action($0.action), $0.score) }
+        let hour = Sim.hour
+        for recipe in brain.recipes where recipe.enabled && recipe.isRunnable && recipe.trigger.isActive(hour: hour) {
+            if let until = recipeCooldowns[recipe.id], world.now < until { continue }
+            options.append((.recipe(recipe), recipe.weight))
+        }
+        // Try them in weighted-random order until one works out.
+        while let choice = UtilityPlanner.pick(options, random: .random(in: 0..<1, using: &Sim.rng)) {
+            switch choice {
+            case .action(let action):
+                if perform(action, world: world) { return }
+                options.removeAll { if case .action(action) = $0.0 { true } else { false } }
+            case .recipe(let recipe):
+                startRecipe(recipe, world: world)
+                if continueRecipe(world) { return }
+                options.removeAll { if case .recipe(let r) = $0.0 { r.id == recipe.id } else { false } }
+            }
         }
         begin(.sit, for: 3)
     }
@@ -555,7 +575,15 @@ final class Cat {
     // MARK: - Reactions
 
     /// Runs the brain's reactions to an event: emotes show at once, actions wait for the next decision.
+    /// A recipe started by the event also begins at the next decision.
     func react(to event: CatEvent, world: CatWorld) {
+        for recipe in brain.recipes where recipe.enabled && recipe.isRunnable {
+            guard case .event(let e) = recipe.trigger, e == event else { continue }
+            if let until = recipeCooldowns[recipe.id], world.now < until { continue }
+            guard Double.random(in: 0..<1, using: &Sim.rng) < recipe.chance else { continue }
+            startRecipe(recipe, world: world)
+            break
+        }
         for reaction in brain.reactions where reaction.event == event {
             if let until = reactionCooldowns[reaction.id], world.now < until { continue }
             guard Double.random(in: 0..<1, using: &Sim.rng) < reaction.chance else { continue }
@@ -582,6 +610,69 @@ final class Cat {
             }
             return
         }
+    }
+
+    // MARK: - Recipes
+
+    /// A recipe in progress: its next step runs whenever the cat is free again.
+    private var ritual: (recipe: Recipe, next: Int, expires: Double)?
+    /// A recipe asked for a nap of a certain length: don't wake up early just because rested.
+    private var sleepsItOut = false
+    private var recipeCooldowns: [UUID: Double] = [:]
+
+    private func startRecipe(_ recipe: Recipe, world: CatWorld) {
+        recipeCooldowns[recipe.id] = world.now + recipe.cooldown
+        ritual = (recipe, 0, world.now + 20)
+        world.report?.recipe(recipe.name, cat: self)
+        if Self.debugLog {
+            FileHandle.standardError.write("    \(config.name) starts \"\(recipe.name)\"\n".data(using: .utf8)!)
+        }
+    }
+
+    private enum StepResult { case started, instant, failed }
+
+    /// Starts the next step of the recipe in progress. False if there is none, or it can't happen
+    /// (then the recipe is dropped and the cat decides as usual).
+    private func continueRecipe(_ world: CatWorld) -> Bool {
+        while let r = ritual {
+            // An event recipe that couldn't start within 20 seconds is forgotten.
+            guard r.next < r.recipe.steps.count, r.next > 0 || world.now < r.expires else {
+                ritual = nil
+                return false
+            }
+            ritual?.next += 1
+            switch runStep(r.recipe.steps[r.next], world) {
+            case .started: return true
+            case .instant: continue
+            case .failed:
+                ritual = nil
+                return false
+            }
+        }
+        return false
+    }
+
+    private func runStep(_ step: RecipeStep, _ world: CatWorld) -> StepResult {
+        switch step {
+        case .goTo(let place): return nap(at: place, world, then: .sit) ? .started : .failed
+        case .sit(let s): begin(.sit, for: s)
+        case .sleep(let s):
+            begin(.sleep, for: s ?? sleepDuration)
+            sleepsItOut = s != nil
+        case .groom(let s): begin(.groom, for: s)
+        case .wait(let s): begin(.stand, for: s)
+        case .rummage: return start(.rummage, world: world) ? .started : .failed
+        case .scratch: return start(.scratch, world: world) ? .started : .failed
+        case .zoomies: return start(.zoomies, world: world) ? .started : .failed
+        case .wander: return start(.wander, world: world) ? .started : .failed
+        case .followCursor: return start(.visitCursor, world: world) ? .started : .failed
+        case .emote(let e):
+            showEmote(e.kind, for: 1.6)
+            return .instant
+        case .say: return .instant  // cats can't speak yet
+        case .unknown: return .failed
+        }
+        return .started
     }
 
     /// Travel to a point, on this surface or another one. Returns false if there is no way there.
@@ -660,27 +751,28 @@ final class Cat {
         world.report?.napped(at: nil, cat: self)
     }
 
-    private func nap(at place: CatPlace, _ world: CatWorld) -> Bool {
+    /// Goes to a kind of place, to sleep there (or, for recipes, to sit).
+    private func nap(at place: CatPlace, _ world: CatWorld, then next: Activity = .sleep) -> Bool {
         switch place {
         case .bed:
-            guard let bed = world.freeBed(for: self), go(to: bed.surface, x: bed.x, then: .sleep, world: world) else { return false }
+            guard let bed = world.freeBed(for: self), go(to: bed.surface, x: bed.x, then: next, world: world) else { return false }
             bedID = bed.id
             return true
         case .friends:
             guard let buddy = world.sleepingBuddy(for: self), let s = buddy.surface else { return false }
             let side: CGFloat = buddy.x > x ? -1 : 1
-            return go(to: s, x: buddy.x + side * 17 * pixel, then: .sleep, world: world)
+            return go(to: s, x: buddy.x + side * 17 * pixel, then: next, world: world)
         case .high:
             guard let spot = world.highSpot(for: self) else { return false }
-            return go(to: spot.surface, x: spot.x, then: .sleep, world: world)
+            return go(to: spot.surface, x: spot.x, then: next, world: world)
         case .box, .laundry, .wardrobe, .flowerPot:
             guard let kind = place.furniture, let spot = world.freeNapFurniture(kind, for: self),
-                  go(to: spot.surface, x: spot.x, then: .sleep, world: world) else { return false }
+                  go(to: spot.surface, x: spot.x, then: next, world: world) else { return false }
             bedID = spot.id
             return true
         default:
             guard let spot = world.napSpot(place, for: self) else { return false }
-            return go(to: spot.surface, x: spot.x, then: .sleep, world: world)
+            return go(to: spot.surface, x: spot.x, then: next, world: world)
         }
     }
 

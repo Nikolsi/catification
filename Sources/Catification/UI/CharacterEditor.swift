@@ -154,6 +154,31 @@ struct CharacterSections: View {
         }
 
         Section {
+            ForEach(brain.recipes) { $recipe in
+                RecipeRow(recipe: $recipe) {
+                    brain.wrappedValue.recipes.removeAll { $0.id == recipe.id }
+                }
+            }
+            let added = Set(brain.wrappedValue.recipes.compactMap(\.template))
+            Menu {
+                ForEach(RecipeTemplate.allCases.filter { !added.contains($0) }) { template in
+                    Button(template.title) { brain.wrappedValue.recipes.append(template.make()) }
+                }
+            } label: {
+                Label("Add a ritual", systemImage: "plus")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .disabled(RecipeTemplate.allCases.allSatisfy { added.contains($0) })
+        } header: {
+            Text("Rituals")
+        } footer: {
+            Text("Little habits made of several steps. More are coming; a .catprofile file can describe any ritual.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+
+        Section {
             Button("Export this cat…") { CatProfileFiles.export(cat) }
             Text("Saves a .catprofile file you can share, for example in GitHub Discussions.")
                 .font(.caption)
@@ -292,6 +317,104 @@ private struct ReactionRow: View {
                 .frame(width: 38, alignment: .trailing)
             Button(action: remove) { Image(systemName: "minus.circle") }
                 .buttonStyle(.borderless)
+        }
+    }
+}
+
+private struct RecipeRow: View {
+    @Binding var recipe: Recipe
+    let remove: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Toggle(recipe.name, isOn: $recipe.enabled)
+                Spacer()
+                switch recipe.trigger {
+                case .event(let event):
+                    Text(String(format: L("When: %@"), event.title))
+                        .foregroundStyle(.secondary)
+                    Slider(value: $recipe.chance, in: 0...1)
+                        .frame(width: 80)
+                    Text("\(Int((recipe.chance * 100).rounded()))%")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(width: 38, alignment: .trailing)
+                case .hours:
+                    Picker("", selection: hour(\.from)) {
+                        ForEach(0..<24, id: \.self) { Text(String(format: "%02d:00", $0)).tag($0) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 80)
+                    Text("–")
+                    Picker("", selection: hour(\.to)) {
+                        ForEach(0..<24, id: \.self) { Text(String(format: "%02d:00", $0)).tag($0) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 80)
+                    Picker("", selection: $recipe.weight) {
+                        Text("less often").tag(0.75)
+                        Text("sometimes").tag(1.5)
+                        Text("more often").tag(3.0)
+                    }
+                    .labelsHidden()
+                    .frame(width: 110)
+                case .unknown:
+                    Text("Needs a newer Catification")
+                        .foregroundStyle(.secondary)
+                }
+                Button(action: remove) { Image(systemName: "minus.circle") }
+                    .buttonStyle(.borderless)
+            }
+            Text(recipe.steps.map(\.summary).joined(separator: " → "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private struct Hours { var from: Int; var to: Int }
+
+    private func hour(_ part: WritableKeyPath<Hours, Int>) -> Binding<Int> {
+        Binding(
+            get: {
+                guard case .hours(let f, let t) = recipe.trigger else { return 0 }
+                return Hours(from: f, to: t)[keyPath: part]
+            },
+            set: { value in
+                guard case .hours(let f, let t) = recipe.trigger else { return }
+                var hours = Hours(from: f, to: t)
+                hours[keyPath: part] = value
+                recipe.trigger = .hours(from: hours.from, to: hours.to)
+            }
+        )
+    }
+}
+
+extension RecipeStep {
+    /// A few words for the cat editor: "comes to the cursor", "naps".
+    var summary: String {
+        switch self {
+        case .goTo(let place): String(format: L("goes to: %@"), place.title)
+        case .sit: L("sits")
+        case .sleep: L("naps")
+        case .groom: L("washes")
+        case .wait: L("waits")
+        case .rummage: L("rummages in the trash")
+        case .scratch: L("scratches")
+        case .zoomies: L("zoomies")
+        case .wander: L("wanders off")
+        case .followCursor: L("comes to the cursor")
+        case .emote(let e):
+            switch e {
+            case .heart: "♥"
+            case .note: "♪"
+            case .exclaim: "!"
+            case .question: "?"
+            case .anger: "💢"
+            case .zzz: "z"
+            }
+        case .say(let line): "“\(line)”"
+        case .unknown: "…"
         }
     }
 }

@@ -54,13 +54,18 @@ enum UtilityPlanner {
 
     /// Weighted random pick, the way `decide()` uses it. `random` is injectable for tests.
     static func pick(from scores: [(action: CatAction, score: Double)], random: Double = .random(in: 0..<1)) -> CatAction? {
-        let total = scores.reduce(0) { $0 + $1.score }
+        pick(scores.map { ($0.action, $0.score) }, random: random)
+    }
+
+    /// Weighted random pick among anything: actions, recipes.
+    static func pick<Choice>(_ options: [(Choice, Double)], random: Double) -> Choice? {
+        let total = options.reduce(0) { $0 + $1.1 }
         guard total > 0 else { return nil }
         var r = random * total
-        for item in scores {
-            r -= item.score
-            if r < 0 { return item.action }
+        for (choice, score) in options {
+            r -= score
+            if r < 0 { return choice }
         }
-        return scores.last?.action
+        return options.last?.0
     }
 }

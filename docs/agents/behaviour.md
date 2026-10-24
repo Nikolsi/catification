@@ -32,6 +32,12 @@ Don't tune behaviour by watching the screen. Run it:
 - `needs`: how much loneliness and boredom sway choices.
 - `routines`: hour windows that boost an action ("afternoon: nap").
 - `reactions`: event → response with a chance and a cooldown. Built-in ones have stable IDs from `UUID(stable:)`.
+- `recipes`: habits made of several steps, "rituals" in the editor (`Brain/Recipe.swift`). A trigger
+  (`{"event": "petted"}` or `{"hours": [19, 23]}`), then steps (`{"goTo": "laundry"}`, `{"sleep": 120}`,
+  `{"zoomies": true}`…). Event recipes start at the cat's next decision after the event; time-of-day recipes
+  compete with the actions in the planner by `weight`. A step that can't happen drops the recipe; petting,
+  squishing or picking a cat up interrupts it. Unknown triggers and steps from newer versions are kept on
+  save but never run. Built-in templates: `RecipeTemplate`.
 - `phrases`: lines per situation, for the thought bubbles to come.
 
 Personalities (`playful`, `lazy`, …) are presets: `CatBrain.preset(_:)`. They reproduce the weights the
