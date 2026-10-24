@@ -304,6 +304,7 @@ final class CatWorld {
 
         for cat in cats { cat.sync(world: self) }
         syncFurnitureViews()
+        ball?.standout = store.standout
         ball?.sync()
         for b in butterflies { b.sync() }
         laserDot.isHidden = !laserOn
@@ -919,11 +920,12 @@ final class CatWorld {
             guard visible, let l = layout(f) else {
                 view.main.isHidden = true
                 view.front.isHidden = true
+                view.hideHalo(store.standout)
                 view.showOutline(false, handles: [])
                 continue
             }
             view.main.isHidden = false
-            view.update(art: l.art, front: l.front, origin: l.origin, pixel: geo.furniturePixel, z: l.z, key: l.key)
+            view.update(art: l.art, front: l.front, origin: l.origin, pixel: geo.furniturePixel, z: l.z, key: l.key, standout: store.standout)
             view.showOutline(editMode, handles: handles(for: f, frame: view.frame))
         }
     }
@@ -1057,7 +1059,7 @@ final class CatWorld {
     }
 
     func removeBall() {
-        ball?.layer.removeFromSuperlayer()
+        ball?.removeLayers()
         ball = nil
     }
 

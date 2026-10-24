@@ -54,4 +54,27 @@ final class ArtTests: XCTestCase {
             XCTAssertEqual(sprite.height, 7, text)
         }
     }
+
+    // MARK: Standing out
+
+    @MainActor
+    func testRingIsTheSilhouetteGrownByOnePixel() {
+        // A single opaque pixel: a plus sign without diagonals, a 3×3 square with them.
+        var c = PixelCanvas(width: 1, height: 1)
+        c.draw(["X"], at: 0, 0, kind: .fx, outline: .none)
+        let dot = PixelRenderer.image(c) { _ in RGB(0, 0, 0) }
+        func opaque(_ image: CGImage) -> Int {
+            var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
+            bytes.withUnsafeMutableBytes { buffer in
+                CGContext(data: buffer.baseAddress, width: image.width, height: image.height, bitsPerComponent: 8, bytesPerRow: image.width * 4,
+                          space: PixelRenderer.colorSpace, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)?
+                    .draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+            }
+            return stride(from: 3, to: bytes.count, by: 4).filter { bytes[$0] > 0 }.count
+        }
+        let plus = HaloLayer.ring(of: dot, alpha: 0.5, diagonals: false)
+        XCTAssertEqual(plus.width, 3)
+        XCTAssertEqual(opaque(plus), 5)
+        XCTAssertEqual(opaque(HaloLayer.ring(of: dot, alpha: 0.9, diagonals: true)), 9)
+    }
 }

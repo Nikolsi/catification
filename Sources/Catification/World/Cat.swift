@@ -152,6 +152,8 @@ final class Cat {
     private let clip = CALayer()
     private let ghostClip = CALayer()
     private let emoteLayer = CALayer()
+    private let halo = HaloLayer()
+    private var haloStyle: Standout = .lightSticker
     private let baseZ = 10 + CGFloat.random(in: 0..<1, using: &Sim.rng)
 
     init(config: CatConfig, world: CatWorld) {
@@ -184,6 +186,7 @@ final class Cat {
     }
 
     func detach() {
+        halo.remove()
         layer.removeFromSuperlayer()
         ghost.removeFromSuperlayer()
         emoteLayer.removeFromSuperlayer()
@@ -312,6 +315,9 @@ final class Cat {
         animTime += moving ? dt * traits.speed * world.store.speed : dt
         tickStats(dt, world: world)
         tickTimers(dt, world: world)
+
+        // A ring and shadow behind the cat (not while it squeezes through a portal).
+        halo.update(behind: layer, image: shownImage, pixel: pixel, style: haloStyle, visible: transit == nil)
 
         if let t = transit {
             continueTransit(t, dt: dt, world: world)
@@ -1938,6 +1944,7 @@ final class Cat {
         // Wrestling cats are inside the fight cloud.
         let hidden = activity == .wrestle
         if layer.isHidden != hidden { layer.isHidden = hidden }
+        haloStyle = world.store.standout
 
         let size = canvasSize
         let px = (x * 2).rounded() / 2

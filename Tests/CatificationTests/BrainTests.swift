@@ -170,6 +170,13 @@ final class BrainTests: XCTestCase {
         XCTAssertNil(item.fur)
     }
 
+    @MainActor
+    func testStandoutDecodesAndDefaultsToALightSticker() throws {
+        XCTAssertEqual(try JSONDecoder().decode(Standout.self, from: Data(#""sticker""#.utf8)), .sticker)
+        let store = SettingsStore(transientCats: [], furniture: [], mode: .screen)
+        XCTAssertEqual(store.standout, .lightSticker)
+    }
+
     private func share(_ action: CatAction, in scores: [(action: CatAction, score: Double)]) -> Double {
         let total = scores.reduce(0) { $0 + $1.score }
         return (scores.first { $0.action == action }?.score ?? 0) / total
