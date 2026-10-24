@@ -299,6 +299,7 @@ final class CatWorld {
             return !alive
         }
         updatePortals()
+        updateFights(dt)
 
         for cat in cats { cat.sync(world: self) }
         syncFurnitureViews()
@@ -1426,6 +1427,63 @@ final class CatWorld {
         addParticle(.zzz, at: CGPoint(x: head.x + dir * (rising ? 4 : 8) * cat.pixel, y: head.y + (rising ? 3 : -2) * cat.pixel),
                     velocity: CGVector(dx: dir * (rising ? 6 : 12), dy: rising ? 10 : -6), gravity: 0, life: 2.2,
                     pixel: max(1, cat.pixel - 1), wobble: 2)
+    }
+
+    // MARK: - Fights
+
+    private var fights: [UUID: (cloud: FightCloud, starter: Cat, bottom: CGPoint, symbolTimer: Double)] = [:]
+
+    /// Two cats start wrestling: they disappear into a fight cloud.
+    func startFight(_ a: Cat, _ b: Cat, at bottom: CGPoint) {
+        fights[a.id]?.cloud.remove()
+        let cloud = FightCloud(a.config.appearance, b.config.appearance, pixel: a.pixel, root: root)
+        fights[a.id] = (cloud, a, bottom, 0.15)
+        sparkle(at: CGPoint(x: bottom.x, y: bottom.y + 8 * a.pixel), kind: .sparkOrange, count: 6)
+    }
+
+    func moveFight(of cat: Cat, to bottom: CGPoint) {
+        fights[cat.id]?.bottom = bottom
+    }
+
+    private func updateFights(_ dt: Double) {
+        for (id, fight) in fights {
+            guard fight.starter.activity == .wrestle else {
+                // Over: a last puff of dust where the cloud was.
+                fight.cloud.remove()
+                fights[id] = nil
+                for _ in 0..<5 { spawnFluff(at: CGPoint(x: fight.bottom.x, y: fight.bottom.y + 8 * fight.starter.pixel)) }
+                continue
+            }
+            fight.cloud.update(dt: dt, bottom: fight.bottom)
+            var timer = fight.symbolTimer - dt
+            if timer <= 0 {
+                timer = .random(in: 0.18...0.35, using: &Sim.looks)
+                spawnFightSymbol(at: CGPoint(x: fight.bottom.x, y: fight.bottom.y + 14 * fight.starter.pixel), pixel: fight.starter.pixel)
+            }
+            fights[id]?.symbolTimer = timer
+        }
+    }
+
+    /// A few angry symbols popping out over a cat.
+    func spawnFightSymbols(from cat: Cat, count: Int) {
+        for _ in 0..<count { spawnFightSymbol(at: CGPoint(x: cat.x, y: cat.y + 14 * cat.pixel), pixel: cat.pixel) }
+    }
+
+    /// Cartoon swearing, stars and anger popping out of a fight cloud.
+    private func spawnFightSymbol(at p: CGPoint, pixel: CGFloat) {
+        let words = ["#@!", "!", "*!", "@#", "!?"]
+        let sprite: EmoteArt.Sprite?
+        switch Int.random(in: 0..<5, using: &Sim.looks) {
+        case 0, 1: sprite = PixelFont.sprite(words.randomElement(using: &Sim.looks)!, color: PixelFont.colors[[0, 2].randomElement(using: &Sim.looks)!])
+        case 2: sprite = EmoteArt.sprites[.anger]
+        case 3: sprite = EmoteArt.sprites[.exclaim]
+        default: sprite = EmoteArt.sprites[.sparkOrange]
+        }
+        guard let sprite else { return }
+        let dir: CGFloat = Bool.random(using: &Sim.looks) ? 1 : -1
+        addParticle(sprite, at: CGPoint(x: p.x + dir * .random(in: 2...10, using: &Sim.looks) * pixel, y: p.y),
+                    velocity: CGVector(dx: dir * .random(in: 20...60, using: &Sim.looks), dy: .random(in: 50...90, using: &Sim.looks)),
+                    gravity: 110, life: .random(in: 0.5...0.8, using: &Sim.looks), pixel: max(1, pixel - 0.5))
     }
 
     func spawnFluff(at point: CGPoint) {

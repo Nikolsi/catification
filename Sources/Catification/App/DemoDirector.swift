@@ -8,7 +8,7 @@ import SwiftUI
 @MainActor
 final class DemoDirector {
     enum Scene: String, CaseIterable {
-        case notch, jump, miss, trash, butterflies, pet, play, naps, poses, trailer, windows
+        case notch, jump, miss, trash, butterflies, pet, play, ambush, naps, poses, trailer, windows
 
         /// How long the recording script should record, in seconds.
         var duration: Double {
@@ -22,6 +22,7 @@ final class DemoDirector {
             case .play: 11
             case .naps: 10
             case .poses: 22
+            case .ambush: 15
             case .trailer: 22
             case .windows: 20
             }
@@ -116,6 +117,9 @@ final class DemoDirector {
                     CatConfig(name: L("Marshmallow"), coat: .siamese, personality: .lazy)]
             cats[1].brain = { var b = CatBrain.preset(.lazy); b.places = [.box: 50, .bed: 0, .friends: 0]; b.routines = []; return b }()
             // Placed in `start`, once the notch position is known.
+        case .ambush:
+            cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
+                    CatConfig(name: L("Smokey"), coat: .gray, personality: .lazy)]
         case .poses:
             // Four ways to sleep, then a big stretch.
             let poses: [(CoatPreset, SleepPose)] = [(.ginger, .loaf), (.gray, .curled), (.tuxedo, .sploot), (.calico, .bellyUp)]
@@ -178,7 +182,7 @@ final class DemoDirector {
                            width: notch.upperBound - notch.lowerBound + 400, height: world.geo.menuBarHeight + 4)
             world.setDemoStage(stage, floor: 0, notch: CGRect(x: notch.lowerBound, y: world.geo.menuBarY,
                                                               width: notch.upperBound - notch.lowerBound, height: world.geo.menuBarHeight))
-        } else if scene == .poses {
+        } else if scene == .poses || scene == .ambush {
             // A low strip: everything happens on the floor, so the cats look big.
             stage = CGRect(x: Self.room.minX, y: Self.room.minY, width: Self.room.width, height: 120)
             world.setDemoStage(stage, floor: Self.floor, notch: nil)
@@ -401,6 +405,7 @@ final class DemoDirector {
         case .naps: return [r.minX + 90, r.minX + 170, r.minX + 250, r.minX + 330, r.minX + 340]
         case .windows: return []
         case .poses: return [r.minX + 60, r.minX + 160, r.minX + 270, r.minX + 380]
+        case .ambush: return [r.minX + 120, r.minX + 220]
         case .trailer:
             guard let stage = world?.demoStage else { return [] }
             return [stage.minX + 40, stage.minX + 130]
@@ -472,6 +477,20 @@ final class DemoDirector {
         case .naps:
             at(1.6) { world in
                 for cat in world.cats { cat.goToSleep(world) }
+            }
+        case .ambush:
+            // A sleeping cat, a sneaky one, a pounce, a fight cloud, and a very cross cat.
+            at(0.8) { world in
+                guard world.cats.count > 1 else { return }
+                let sleeper = world.cats[1]
+                sleeper.demoPose = .curled
+                sleeper.demoNoWake = true
+                sleeper.goToSleep(world, here: true)
+                world.cats[0].begin(.sit, for: 3)
+            }
+            at(3.6) { world in
+                guard world.cats.count > 1 else { return }
+                world.cats[0].ambush(world.cats[1], world: world)
             }
         case .poses:
             for (i, cat) in world?.cats.enumerated() ?? [].enumerated() {
