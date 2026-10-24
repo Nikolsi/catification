@@ -67,6 +67,7 @@ Terminal-like and a Notes-like window, drags them around and the cats ride along
 - The stories are scripted in `DemoDirector.swift`. The compositions live in `promo/src/Trailer.tsx` and `promo/src/Windows.tsx`
   (shared intro, footage and end card in `promo/src/common.tsx`); they are timed by the events the scene reports
   (portal, calculate, jump, hang…), so they keep working when a story changes.
+- `scripts/record-trailer.sh poses` makes a square clip of the sleeping poses for social media (`promo/out/sleep-poses.mp4` and `.gif`, not committed).
 - `scripts/record-trailer.sh [trailer|windows] --render` re-renders from the last recording; `cd promo && npm run studio` opens Remotion Studio for tweaking.
 - Needs a MacBook with a notch, ffmpeg and Node.js. `promo/.npmrc` points at the public npm registry.
 

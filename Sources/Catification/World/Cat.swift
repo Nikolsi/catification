@@ -412,6 +412,12 @@ final class Cat {
         }
         blinking = max(0, blinking - dt)
         squishFace = max(0, squishFace - dt)
+        yawnTime = max(0, yawnTime - dt)
+        stretchTime = max(0, stretchTime - dt)
+        // A tired cat sitting around yawns now and then.
+        if activity == .sit, yawnTime <= 0, energy < 0.35, Double.random(in: 0..<1, using: &Sim.looks) < dt * 0.06 {
+            yawnTime = Self.yawnLength
+        }
         heartCooldown -= dt
         greetCooldown -= dt
         strokeAmount *= CGFloat(exp(-dt * 0.8))
@@ -420,7 +426,8 @@ final class Cat {
             emote = e.remaining > dt ? (e.kind, e.remaining - dt) : nil
         }
 
-        if activity == .sleep, transit == nil {
+        // No Z's while still yawning before lying down.
+        if activity == .sleep, transit == nil, yawnTime <= 0 {
             zzzCooldown -= dt
             if zzzCooldown <= 0 {
                 world.spawnZ(from: self)
@@ -458,6 +465,11 @@ final class Cat {
             FileHandle.standardError.write("\(t) \(config.name): \(a) on \(surface.map { "\($0)" } ?? "-") x=\(Int(x)) y=\(Int(y))\n".data(using: .utf8)!)
         }
         if a != .sleep { bedID = nil }
+        if a == .sleep, activity != .sleep, surface != nil {
+            choosePose(inFurniture: false)
+            // Sleepy cats often yawn before lying down.
+            if Double.random(in: 0..<1, using: &Sim.looks) < min(0.85, 0.35 + 0.25 * sleepiness) { yawnTime = Self.yawnLength }
+        }
         sleepsItOut = false
         activity = a
         activityTime = 0
@@ -783,7 +795,41 @@ final class Cat {
 
     func wakeUp() {
         guard activity == .sleep else { return }
+        let slept = activityTime
         begin(.stand, for: .random(in: 1...2, using: &Sim.rng))
+        // After a proper nap: a big stretch first.
+        if slept > 15 {
+            stretchTime = Self.stretchLength
+            activityDuration += Self.stretchLength
+        }
+    }
+
+    // MARK: - Looks
+
+    private var sleepPose: SleepPose = .loaf
+    /// Demo recordings: always sleep like this.
+    var demoPose: SleepPose?
+    /// Seconds left of a yawn (sitting, or just before lying down) and of a stretch (after waking).
+    private var yawnTime = 0.0
+    private var stretchTime = 0.0
+    private static let yawnLength = 4 / Anim.yawn.fps
+    private static let stretchLength = 2 / Anim.stretch.fps
+
+    /// A favourite pose most of the time, otherwise any; in a box or a pot only the tucked-up ones fit.
+    private func choosePose(inFurniture: Bool) {
+        if let demoPose {
+            sleepPose = demoPose
+            return
+        }
+        let options: [(SleepPose, Double)] = inFurniture
+            ? [(.loaf, 1), (.curled, 1)]
+            : [(.loaf, 3), (.curled, 3), (.sploot, 2), (.bellyUp, 1.5)]
+        if let favourite = brain.sleepPose, options.contains(where: { $0.0 == favourite }),
+           Double.random(in: 0..<1, using: &Sim.looks) < 0.7 {
+            sleepPose = favourite
+            return
+        }
+        sleepPose = UtilityPlanner.pick(options, random: .random(in: 0..<1, using: &Sim.looks)) ?? .loaf
     }
 
     private func comeToCursor(_ world: CatWorld) -> Bool {
@@ -870,6 +916,7 @@ final class Cat {
                 x = spot.info.x
                 napLift = world.napLift(spot.kind)
                 facingRight = Bool.random(using: &Sim.rng)
+                choosePose(inFurniture: spot.kind != .bed)
                 activity = .sleep
                 activityTime = 0
                 activityDuration = sleepDuration
@@ -1659,10 +1706,21 @@ final class Cat {
     private var currentAnim: Anim {
         if squishFace > 0, activity == .stand { return .squish }
         switch activity {
-        case .stand: return blinking > 0 ? .blink : .stand
-        case .sit: return blinking > 0 ? .sitBlink : .sit
+        case .stand:
+            if stretchTime > 0 { return .stretch }
+            return blinking > 0 ? .blink : .stand
+        case .sit:
+            if yawnTime > 0 { return .yawn }
+            return blinking > 0 ? .sitBlink : .sit
         case .groom: return .groom
-        case .sleep: return .sleep
+        case .sleep:
+            if yawnTime > 0 { return .yawn }
+            switch sleepPose {
+            case .loaf: return .sleep
+            case .curled: return .sleepCurled
+            case .sploot: return .sleepSploot
+            case .bellyUp: return .sleepBelly
+            }
         case .walk: return .walk
         case .run, .chase, .flee: return .run
         case .crouch: return .crouch

@@ -16,7 +16,7 @@ command -v ffmpeg >/dev/null || { echo "ffmpeg not found: brew install ffmpeg" >
 swift build -c release
 BIN="$(swift build -c release --show-bin-path)/Catification"
 
-if [ $# -gt 0 ]; then SCENES=("$@"); else SCENES=(notch jump miss trash butterflies pet play naps); fi
+if [ $# -gt 0 ]; then SCENES=("$@"); else SCENES=(notch jump miss trash butterflies pet play naps poses); fi
 OUT=docs/media
 TMP="$(mktemp -d)"
 mkdir -p "$OUT"

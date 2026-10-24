@@ -1,6 +1,7 @@
 import { Composition, staticFile } from "remotion";
 import { FPS } from "./common";
 import { Trailer, trailerDuration, type TrailerTimeline } from "./Trailer";
+import { SleepPoses, sleepPosesDuration } from "./SleepPoses";
 import { Windows, windowsDuration, type WindowsTimeline } from "./Windows";
 
 // timeline.json is written by scripts/record-trailer.sh next to the footage.
@@ -33,6 +34,14 @@ export const Root: React.FC = () => (
         const timeline: WindowsTimeline = props.timeline ?? (await load("windows"));
         return { props: { timeline }, durationInFrames: Math.round(windowsDuration(timeline) * FPS) };
       }}
+    />
+    <Composition
+      id="SleepPoses"
+      component={SleepPoses}
+      fps={FPS}
+      width={1080}
+      height={1080}
+      durationInFrames={Math.round(sleepPosesDuration * FPS)}
     />
   </>
 );

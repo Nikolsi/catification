@@ -8,6 +8,9 @@ import Foundation
 @MainActor
 enum Sim {
     static var rng = SimRandom()
+    /// For choices that only change how things look (which sleeping pose, when to yawn), so that
+    /// visual variety never changes what cats do.
+    static var looks = SimRandom()
     /// Seconds of simulated time since launch, advanced by the world every tick.
     private(set) static var time: Double = 0
     /// Set in repeatable runs: every tick advances the simulation by exactly this much.
@@ -29,6 +32,7 @@ enum Sim {
     /// Makes the rest of the run repeatable. `start` is the simulated date from now on.
     static func seed(_ seed: UInt64, start: Date? = nil) {
         rng = SimRandom(seed: seed)
+        looks = SimRandom(seed: seed &+ 0x9E37_79B9)
         fixedStep = 1.0 / 60
         startDate = (start ?? date).addingTimeInterval(-time)
     }
@@ -36,12 +40,14 @@ enum Sim {
     /// Everything above, so a world can keep its own and run with it (`run(in:_:)`).
     struct State {
         var rng: SimRandom
+        var looks: SimRandom
         var time: Double = 0
         var fixedStep: Double?
         var startDate: Date?
 
-        init(rng: SimRandom, time: Double, fixedStep: Double?, startDate: Date?) {
+        init(rng: SimRandom, looks: SimRandom, time: Double, fixedStep: Double?, startDate: Date?) {
             self.rng = rng
+            self.looks = looks
             self.time = time
             self.fixedStep = fixedStep
             self.startDate = startDate
@@ -50,6 +56,7 @@ enum Sim {
         /// A repeatable state: seeded randomness, fixed 1/60 s steps, the clock at `start`.
         init(seed: UInt64, start: Date) {
             rng = SimRandom(seed: seed)
+            looks = SimRandom(seed: seed &+ 0x9E37_79B9)
             fixedStep = 1.0 / 60
             startDate = start
         }
@@ -58,10 +65,10 @@ enum Sim {
     /// Runs `body` with `state` as the simulation's time and chance, then hands the changes back.
     /// Several worlds can live in one process this way (tests, the fast-forward runner).
     static func run<T>(in state: inout State, _ body: () throws -> T) rethrows -> T {
-        let saved = State(rng: rng, time: time, fixedStep: fixedStep, startDate: startDate)
+        let saved = State(rng: rng, looks: looks, time: time, fixedStep: fixedStep, startDate: startDate)
         set(state)
         defer {
-            state = State(rng: rng, time: time, fixedStep: fixedStep, startDate: startDate)
+            state = State(rng: rng, looks: looks, time: time, fixedStep: fixedStep, startDate: startDate)
             set(saved)
         }
         return try body()
@@ -69,6 +76,7 @@ enum Sim {
 
     private static func set(_ s: State) {
         rng = s.rng
+        looks = s.looks
         time = s.time
         fixedStep = s.fixedStep
         startDate = s.startDate

@@ -120,6 +120,10 @@ struct CharacterSections: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Picker("Sleeps", selection: brain.sleepPose) {
+                Text("Any way").tag(SleepPose?.none)
+                ForEach(SleepPose.allCases) { Text($0.title).tag(SleepPose?.some($0)) }
+            }
         }
 
         Section {
