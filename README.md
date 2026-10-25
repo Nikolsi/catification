@@ -17,6 +17,8 @@ Catification is a small native macOS app (Swift, AppKit, Core Animation) that tu
 
 ## See it in action
 
+▶ [Watch the 20-second trailer](docs/media/trailer.mp4) · [Cats living on your windows](docs/media/windows.mp4)
+
 <table>
   <tr>
     <td colspan="2" align="center"><img src="docs/media/demo-notch.gif" alt="Cats walking into a blue portal and out of an orange one on either side of the notch"><br><sub>Slipping past the notch through portals · idea by <a href="https://github.com/nanot1m">@nanot1m</a></sub></td>
@@ -31,24 +33,34 @@ Catification is a small native macOS app (Swift, AppKit, Core Animation) that tu
   </tr>
   <tr>
     <td align="center"><img src="docs/media/demo-pet.gif" width="420" alt="The cursor pets a cat, hearts fly, then a click squishes it"><br><sub>Petting (and a squish)</sub></td>
-    <td align="center"><img src="docs/media/demo-play.gif" width="420" alt="Two cats chase each other and then sit together"><br><sub>Playing chase</sub></td>
+    <td align="center"><img src="docs/media/demo-play.gif" width="420" alt="Two cats pounce, vanish into a cartoon fight cloud and chase each other"><br><sub>Play fights and chases</sub></td>
   </tr>
   <tr>
-    <td colspan="2" align="center"><img src="docs/media/demo-naps.gif" width="560" alt="Cats asleep in an open box, on a closed box, in a pile of laundry, in a flower pot and in a wardrobe"><br><sub>Everyone has a favourite nap spot</sub></td>
+    <td colspan="2" align="center"><img src="docs/media/demo-naps.gif" width="560" alt="Cats asleep in an open box, on a closed box, in a laundry basket, in a flower pot and in a wardrobe"><br><sub>Everyone has a favourite nap spot</sub></td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/media/demo-poses.gif" width="560" alt="Four cats asleep: like a loaf, curled up, stretched out on the belly and belly up; then one wakes and stretches"><br><sub>Four ways to sleep, a yawn and a big stretch</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/media/demo-drink.gif" width="420" alt="One cat drinks from the water fountain standing up; another lies down beside it to drink, then naps hugging it"><br><sub>A drink at the fountain (some lie down for it)</sub></td>
+    <td align="center"><img src="docs/media/demo-laundry.gif" width="420" alt="Cats asleep on clean laundry, in a laundry basket and on a chair with clothes"><br><sub>Clean laundry, nicely furry afterwards</sub></td>
   </tr>
 </table>
 
 ## Features
 
-- **Cats with personalities.** Playful, lazy, curious, affectionate or grumpy, each with its own energy, happiness and hunger. They walk, zoom around, groom, nap (often next to a friend), play chase and say hello to each other.
+- **Cats with personalities.** Playful, lazy, curious, affectionate or grumpy, each with its own energy, happiness, hunger and thirst. They walk, zoom around, groom, play chase and say hello to each other.
+- **Proper naps.** Lazy cats sleep about a third of the time, playful ones a tenth: tucked up like a loaf, curled in a ball, stretched out on the belly or belly up, often next to a friend. Sleepy cats yawn, and after a good nap they have a big stretch.
+- **Play fights.** Playful cats pounce on each other and vanish into a cartoon fight cloud, paws and tails sticking out and "#@!" flying, then dash off in a chase or wash as if nothing happened.
 - **Pet them.** Move the cursor over a cat to pet it (it purrs and hearts fly), click to squish (don't overdo it), drag to pick it up and toss it.
 - **Notch portals.** On MacBooks with a notch, cats walk into a blue portal on one side and come out of an orange one on the other.
 - **Three worlds:** menu bar only; the whole screen above your windows (menu bar, shelves, the tops of other apps' windows, the bottom edge); or the desktop behind your windows.
 - **Jump math.** Before a big jump a cat crouches, formulas float above its head (Δx, θ, √2gh, ∫ …) and a dotted parabola draws itself to the landing spot. Now and then it misjudges and ends up hanging off the edge.
-- **Furniture you arrange yourself:** shelves, a scratching post (claw sharpening included), a cat bed, a food bowl (click to fill it), a trash can to rummage in, and cosy nap spots: an open box, a closed box to sleep on, a pile of laundry, a wardrobe with an open bottom shelf and a flower pot (the plant gets squashed).
+- **Furniture you arrange yourself:** shelves, a scratching post (claw sharpening included), a cat bed, a food bowl (click to fill it), a water fountain, a trash can to rummage in, and cosy nap spots: an open box, a closed box to sleep on, a laundry basket, a stack of clean laundry (it ends up covered in fur), a chair piled with clothes, a wardrobe with an open bottom shelf and a flower pot (the plant gets squashed).
 - **Toys:** a ball of yarn, a laser pointer and butterflies to hunt.
 - **Make them yours:** name, coat preset or custom colours, pattern (solid, tabby, spotted, colorpoint), eye colour, personality and size, with a live preview.
-- **Bring your own cat.** Describe a real cat and tune its character: habits (trash digging, napping, cuddles…), favourite nap spots, a daily routine and how it reacts to things. Share cats as `.catprofile` files.
+- **Bring your own cat.** Describe a real cat and tune its character: habits (trash digging, napping, cuddles…), favourite nap spots, the way it sleeps and drinks, a daily routine, how it reacts to things and rituals (little habits of several steps, like "after petting, follows you" or "evening zoomies"). Share cats as `.catprofile` files.
+- **Easy to see.** A light ring or a soft shadow behind cats and furniture, so they stand out on a busy menu bar or a bright wallpaper, and an optional ledge under a see-through menu bar.
 - **Pixel art made in code.** All sprites are built from ASCII-art parts and recoloured per cat, so the app ships no image assets.
 - **Localised:** English and Russian.
 
@@ -90,7 +102,8 @@ Handy flags: `Catification --settings` opens the settings window on launch, and 
 - **`Art/`:** sprites are assembled from ASCII parts (head, body, legs, tail) with automatic outlines; a per-cat palette recolours them. Also a tiny pixel font for the jump formulas, furniture, emotes, the app icon and the README banner.
 - **`World/CatWorld.swift`:** one transparent, click-through panel above the menu bar that runs at 60 fps. It only catches the mouse while the cursor is over a cat or a toy.
 - **`World/Cat.swift`:** the cat's state machine: routes, jumps, play, eating, rummaging and hunting.
-- **`Brain/`:** a cat's character as data (habits, needs, favourite places, routines, reactions) and the utility planner that picks what a cat does next. No AI needed.
+- **`Brain/`:** a cat's character as data (habits, needs, favourite places, routines, reactions, rituals) and the utility planner that picks what a cat does next. No AI needed.
+- **`World/World.swift` and `World/Sim.swift`:** a world you drive yourself, seeded and never shown, for tests and tuning: `Catification --simulate 8` runs eight hours in seconds and prints what every cat did.
 - **`World/Surfaces.swift` and `World/Navigator.swift`:** everything a cat can stand on (menu bar, floor, shelves, visible window tops, desktop icons) and a Dijkstra planner over jumps between them, with real ballistics.
 - **`UI/`:** SwiftUI settings and the furniture palette.
 
@@ -98,6 +111,7 @@ Handy flags: `Catification --settings` opens the settings window on launch, and 
 
 - Sprite source files and PNG import/export, so artists can contribute with Aseprite or Pixelorama.
 - A small landing page, and more languages for the app and docs.
+- Thought bubbles, speech styles (yes, "nya~"), memories and a cat diary.
 - Optional AI-driven moods and behaviours (local models or your own API key).
 - Windows version.
 - iOS "cat room" app and a Dynamic Island companion.
