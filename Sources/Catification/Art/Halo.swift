@@ -140,3 +140,19 @@ final class HaloLayer {
         return ring
     }
 }
+
+/// Something along the bottom of the menu bar for cats to stand on, when the menu bar is see-through
+/// and they'd otherwise seem to float.
+enum MenuBarLedge: String, Codable, CaseIterable, Identifiable {
+    case off, shadowLine, glass
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .off: L("Off")
+        case .shadowLine: L("Shadow line")
+        case .glass: L("Glass ledge")
+        }
+    }
+}

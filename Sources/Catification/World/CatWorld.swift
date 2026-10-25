@@ -29,6 +29,9 @@ final class CatWorld {
     private(set) var editMode = false
     private(set) var laserOn = false
     private let laserDot = CALayer()
+    /// Along the bottom of the menu bar, when the user wants something for cats to stand on there.
+    private let ledge = CALayer()
+    private var shownLedge: (style: MenuBarLedge, frame: CGRect, pixel: CGFloat)?
 
     // Effects.
     private var particles: [Particle] = []
@@ -299,6 +302,7 @@ final class CatWorld {
             return !alive
         }
         updatePortals()
+        updateLedge()
         updateFights(dt)
         shedOnLaundry()
 
@@ -1500,6 +1504,49 @@ final class CatWorld {
         addParticle(.zzz, at: CGPoint(x: head.x + dir * (rising ? 4 : 8) * cat.pixel, y: head.y + (rising ? 3 : -2) * cat.pixel),
                     velocity: CGVector(dx: dir * (rising ? 6 : 12), dy: rising ? 10 : -6), gravity: 0, life: 2.2,
                     pixel: max(1, cat.pixel - 1), wobble: 2)
+    }
+
+    // MARK: - Menu bar ledge
+
+    private func updateLedge() {
+        let style = geo.mode.hasMenuBar ? store.menuBarLedge : .off
+        let frame = CGRect(x: playArea.minX, y: geo.menuBarY, width: playArea.width, height: 0)
+        let p = geo.furniturePixel
+        if let shown = shownLedge, shown.style == style, shown.frame == frame, shown.pixel == p { return }
+        shownLedge = (style, frame, p)
+        if ledge.superlayer == nil {
+            ledge.disableImplicitAnimations()
+            ledge.zPosition = 3
+            root.addSublayer(ledge)
+        }
+        ledge.sublayers?.forEach { $0.removeFromSuperlayer() }
+        ledge.isHidden = style == .off
+        ledge.frame = CGRect(x: frame.minX, y: frame.minY - 6 * p, width: frame.width, height: 6 * p)
+        // Strips from the top (the menu bar's bottom edge) down, in points from that edge.
+        func strip(_ top: CGFloat, _ height: CGFloat, _ color: CGColor) {
+            let l = CALayer()
+            l.disableImplicitAnimations()
+            l.backgroundColor = color
+            l.frame = CGRect(x: 0, y: ledge.bounds.height - top - height, width: frame.width, height: height)
+            ledge.addSublayer(l)
+        }
+        switch style {
+        case .off:
+            break
+        case .shadowLine:
+            strip(0, 1, CGColor(gray: 0, alpha: 0.28))
+            let shade = CAGradientLayer()
+            shade.disableImplicitAnimations()
+            shade.colors = [CGColor(gray: 0, alpha: 0.22), CGColor(gray: 0, alpha: 0)]
+            shade.startPoint = CGPoint(x: 0.5, y: 1)
+            shade.endPoint = CGPoint(x: 0.5, y: 0)
+            shade.frame = CGRect(x: 0, y: ledge.bounds.height - 1 - 5 * p, width: frame.width, height: 5 * p)
+            ledge.addSublayer(shade)
+        case .glass:
+            strip(0, p, CGColor(gray: 1, alpha: 0.7))
+            strip(p, p, CGColor(gray: 1, alpha: 0.35))
+            strip(2 * p, p, CGColor(gray: 0, alpha: 0.18))
+        }
     }
 
     // MARK: - Fights

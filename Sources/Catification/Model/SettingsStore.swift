@@ -16,6 +16,8 @@ final class SettingsStore: ObservableObject {
     @Published var furniture: [Furniture] { didSet { save() } }
     /// How cats and furniture stand out from busy menu bars and bright wallpapers.
     @Published var standout: Standout { didSet { save() } }
+    /// A line under the menu bar for cats to stand on.
+    @Published var menuBarLedge: MenuBarLedge { didSet { save() } }
 
     /// UI-only: which cat is open in the settings window.
     @Published var selectedCatID: UUID?
@@ -34,10 +36,11 @@ final class SettingsStore: ObservableObject {
         var furniture: [Furniture]?
         var layoutVersion: Int
         var standout: Standout
+        var menuBarLedge: MenuBarLedge
 
         init(cats: [CatConfig], catsVisible: Bool, speed: Double, moodEmotes: Bool, virtualNotch: Bool,
              mode: WorldMode, walkOnWindows: Bool, jumpMath: Bool, butterflies: Bool, climbIcons: Bool, furniture: [Furniture]?,
-             layoutVersion: Int, standout: Standout) {
+             layoutVersion: Int, standout: Standout, menuBarLedge: MenuBarLedge) {
             self.cats = cats
             self.catsVisible = catsVisible
             self.speed = speed
@@ -51,6 +54,7 @@ final class SettingsStore: ObservableObject {
             self.furniture = furniture
             self.layoutVersion = layoutVersion
             self.standout = standout
+            self.menuBarLedge = menuBarLedge
         }
 
         // Every field is optional on disk so that settings from older versions keep loading.
@@ -69,6 +73,7 @@ final class SettingsStore: ObservableObject {
             furniture = try c.decodeIfPresent([Furniture].self, forKey: .furniture)
             layoutVersion = try c.decodeIfPresent(Int.self, forKey: .layoutVersion) ?? 0
             standout = (try? c.decodeIfPresent(Standout.self, forKey: .standout)) ?? .lightSticker
+            menuBarLedge = (try? c.decodeIfPresent(MenuBarLedge.self, forKey: .menuBarLedge)) ?? .off
         }
     }
 
@@ -90,6 +95,7 @@ final class SettingsStore: ObservableObject {
         butterflies = snapshot?.butterflies ?? true
         climbIcons = snapshot?.climbIcons ?? false
         standout = snapshot?.standout ?? .lightSticker
+        menuBarLedge = snapshot?.menuBarLedge ?? .off
         // Older default layouts weren't connected from the floor to the menu bar; replace them.
         if let saved = snapshot?.furniture, (snapshot?.layoutVersion ?? 0) >= Furniture.layoutVersion {
             furniture = saved
@@ -113,6 +119,7 @@ final class SettingsStore: ObservableObject {
         butterflies = false
         climbIcons = false
         standout = .lightSticker
+        menuBarLedge = .off
         self.furniture = furniture
     }
 
@@ -121,7 +128,7 @@ final class SettingsStore: ObservableObject {
         let snapshot = Snapshot(
             cats: cats, catsVisible: catsVisible, speed: speed, moodEmotes: moodEmotes, virtualNotch: virtualNotch,
             mode: mode, walkOnWindows: walkOnWindows, jumpMath: jumpMath, butterflies: butterflies, climbIcons: climbIcons, furniture: furniture,
-            layoutVersion: Furniture.layoutVersion, standout: standout
+            layoutVersion: Furniture.layoutVersion, standout: standout, menuBarLedge: menuBarLedge
         )
         if let data = try? JSONEncoder().encode(snapshot) {
             UserDefaults.standard.set(data, forKey: Self.key)
