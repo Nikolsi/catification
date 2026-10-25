@@ -183,6 +183,10 @@ final class DemoDirector {
            let style = Standout(rawValue: CommandLine.arguments[i + 1]) {
             store.standout = style
         }
+        if let i = CommandLine.arguments.firstIndex(of: "--ledge"), CommandLine.arguments.count > i + 1,
+           let ledge = MenuBarLedge(rawValue: CommandLine.arguments[i + 1]) {
+            store.menuBarLedge = ledge
+        }
         return store
     }
 

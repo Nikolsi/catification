@@ -7,6 +7,7 @@
 ![The same sleeping cats five times: as before, with a soft shadow, a light sticker, a sticker and a glow](docs/media/standout.png)
 
 - "Stand out" in settings: a light ring and a soft shadow behind cats, furniture and toys, so they don't get lost among menu bar icons or on a bright wallpaper. Off, soft shadow, light sticker (the default), sticker or glow.
+- "Menu bar ledge" in settings: a shadow line or a glass ledge along the bottom of a see-through menu bar, so cats walking there don't seem to float. Off by default.
 
 ### Cats with character
 

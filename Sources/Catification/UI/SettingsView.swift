@@ -213,6 +213,12 @@ private struct GeneralTab: View {
                     }
                 }
                 Toggle("Portals in the middle if the screen has no notch", isOn: $store.virtualNotch)
+                Picker("Menu bar ledge", selection: $store.menuBarLedge) {
+                    ForEach(MenuBarLedge.allCases) { Text($0.title).tag($0) }
+                }
+                Text("A line along the bottom of a see-through menu bar, so cats walking there have something to stand on.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section("System") {

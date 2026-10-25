@@ -175,6 +175,8 @@ final class BrainTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(Standout.self, from: Data(#""sticker""#.utf8)), .sticker)
         let store = SettingsStore(transientCats: [], furniture: [], mode: .screen)
         XCTAssertEqual(store.standout, .lightSticker)
+        XCTAssertEqual(store.menuBarLedge, .off)
+        XCTAssertEqual(try JSONDecoder().decode(MenuBarLedge.self, from: Data(#""glass""#.utf8)), .glass)
     }
 
     private func share(_ action: CatAction, in scores: [(action: CatAction, score: Double)]) -> Double {

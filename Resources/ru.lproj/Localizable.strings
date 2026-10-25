@@ -294,3 +294,9 @@
 "Glow" = "Свечение";
 "A light ring or a shadow behind cats and furniture, so they don't get lost on a busy menu bar or a bright wallpaper." = "Светлая обводка или тень за котиками и мебелью, чтобы они не терялись среди иконок в строке меню и на ярких обоях.";
 "Off" = "Выключено";
+
+/* Menu bar ledge */
+"Menu bar ledge" = "Бортик под строкой меню";
+"Shadow line" = "Тень-полоска";
+"Glass ledge" = "Стеклянный бортик";
+"A line along the bottom of a see-through menu bar, so cats walking there have something to stand on." = "Полоска по нижнему краю прозрачной строки меню, чтобы котикам было на чём стоять.";
