@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
 ### Easier to see
 
@@ -34,7 +34,7 @@
 
 ### Play
 
-![A cat sneaks up on a sleeping friend and pounces; a cartoon fight cloud tumbles back and forth; they spring apart and the woken cat is cross](docs/media/demo-ambush.gif)
+![Two cats pounce and vanish into a cartoon fight cloud, then chase each other](docs/media/demo-play.gif)
 
 - Rough and tumble: playful cats sometimes end a pounce in a cartoon fight cloud, a tumbling ball of dust in both cats' colours with paws, tails and ears sticking out and "#@!" flying, then dash off in a chase or sit down and wash as if nothing happened.
 
@@ -44,6 +44,18 @@
 
 - A water fountain: cats get thirsty (more so after running about), go for a drink, lap with drops flying, then lick their lips or wash. It's in the furniture palette and in the default room next to the bowl. Rituals can use it too (`{ "drink": true }`).
 - Some cats drink lying down, a paw round the fountain ("Drinks lying down by the fountain" in the cat editor), and some like to nap hugging it (a new favourite spot).
+
+### Fixes
+
+- A cat can jump up onto a window in front of the one it's standing on (the two edges meet exactly, which used to look like no way up).
+- A cat heading for a bed or a box no longer lies down next to it when the way there includes a jump.
+- Of several free spots of the same kind, a cat picks the nearest one, not a random one across the room.
+
+### For contributors
+
+- `AGENTS.md` and `docs/agents/`: one entry point and focused guides for coding agents; `docs/architecture/engine-strategy.md`: where the code is heading.
+- `Catification --seed N` makes a run repeatable (demo scenes always are), and `Catification --simulate 8` runs eight simulated hours in seconds and prints what every cat did. `World` does the same in tests.
+- A 20-second trailer and a short with real windows, recorded from the app and edited with Remotion (`make trailer`, `make windows-video`).
 
 ## 0.1.0
 
