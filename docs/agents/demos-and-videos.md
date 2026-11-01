@@ -10,22 +10,29 @@ Everything visual in the README and the release notes is recorded from the app i
 - Story scenes report key moments as `EVENT <name> <t> <cat> <x> <y>` lines (`DemoDirector.current?.event`),
   with the cat's position normalised to the stage (0…1, top-left). The video edits are timed by them.
 - Prefer waiting for a state ("the cat has landed and sat down") over fixed delays: cats are random and
-  timing differs between runs.
+  timing differs between runs. Where a roll of the dice could spoil the story, use a demo hook
+  (`demoNap`, `demoPose`, `demoMiss`…) rather than hoping.
+- The editor scene (`App/EditorDemo.swift`) shows the real cat editor and works it with a drawn cursor, as one
+  async story. It finds controls by the names given with `.demoTarget("…")` in the SwiftUI views (a no-op
+  outside demos), then the AppKit control under them: it types into text fields, drags slider knobs, and
+  makes the change through the store, so the cat on stage reacts exactly as it does for a person.
+  `world.demoMouse` makes the drawn cursor count as the mouse, for petting and "comes to the cursor".
 
 ## Recording
 
 - `make demos` (`scripts/record-demos.sh`) records every scene with `screencapture` and turns it into GIFs in
   `docs/media/` with ffmpeg (recorded at 2×). It quits a running Catification first and reopens it afterwards.
-- `make trailer` / `make windows-video` (`scripts/record-trailer.sh [trailer|windows]`) record a story scene,
+- `make trailer` / `make windows-video` / `make editor-video` (`scripts/record-trailer.sh [trailer|windows|editor]`) record a story scene,
   find the sync mark (the fake menu bar clock ticks 9:40 → 9:41 when the story starts), write
   `promo/public/<scene>/timeline.json` and render with Remotion into `docs/media/<scene>.mp4`.
   `--render` re-renders the last recording.
 - Needs: Screen Recording permission for the terminal, ffmpeg, Node.js, a MacBook with a notch for the
-  notch scenes. Nobody should move the mouse over the recorded area while it records.
+  notch scenes. Nobody should move the mouse over the recorded area while it records, or type during the
+  editor scene: its window takes the keys.
 
 ## The Remotion project (`promo/`)
 
-- Compositions in `promo/src/`: `Trailer.tsx`, `Windows.tsx`; shared intro, footage, camera and end card in `common.tsx`.
+- Compositions in `promo/src/`: `Trailer.tsx`, `Windows.tsx`, `Editor.tsx`; shared intro, footage, camera and end card in `common.tsx`.
 - Clips (footage stretches with a playback rate) and camera shots (zoom + centre) are computed from the timeline.
 - `promo/.npmrc` points at the public npm registry. `cd promo && npm run studio` opens Remotion Studio.
 
