@@ -104,6 +104,11 @@ final class Cat {
     private var rummageFrom: CGPoint = .zero
     private var rummageExitSide: CGFloat = 1
     private var rummageSeed = 0.0
+    /// The trash can is drawn for a normal-sized cat: a big one squeezes down to fit inside.
+    private var rummagePixel: CGFloat = 1
+    /// The rim of the can being rummaged in, and its middle: nothing of the cat (whiskers, a tail)
+    /// shows below the rim while it's down inside.
+    private var rummageRim: (y: CGFloat, x: CGFloat) = (0, 0)
     private var trashBitCooldown = 0.0
     private var huntUntil = 0.0
     private var huntRetarget = 0.0
@@ -294,6 +299,25 @@ final class Cat {
     private var napLift: CGFloat = 0
     private var visualLift: CGFloat { activity == .sleep && bedID != nil ? napLift : 0 }
 
+    /// Where the sprite is cut off while the cat is down in the trash can, right over it.
+    private var rimClip: CGFloat? {
+        guard activity == .rummaging, abs(x - rummageRim.x) < 5 * rummagePixel else { return nil }
+        return rummageRim.y
+    }
+
+    /// The scale the sprite is drawn at: its own, except in the trash can, shrinking on the hop
+    /// in and growing back on the hop out.
+    private var drawnPixel: CGFloat {
+        guard activity == .rummaging, rummagePixel < pixel else { return pixel }
+        let inside: Double
+        switch rummagePhase {
+        case 0: inside = activityTime / Self.hopTime
+        case 1: inside = 1
+        default: inside = (activityDuration - activityTime) / Self.hopTime
+        }
+        return pixel + (rummagePixel - pixel) * CGFloat(min(1, max(0, inside)))
+    }
+
     private func walkSpeed(_ world: CatWorld) -> CGFloat {
         // Sneaking up on someone is slower: 7 px/s, matching the stalking animation.
         (ambushing ? 7 : 11) * pixel * CGFloat(traits.speed * world.store.speed)
@@ -317,7 +341,7 @@ final class Cat {
         tickTimers(dt, world: world)
 
         // A ring and shadow behind the cat (not while it squeezes through a portal).
-        halo.update(behind: layer, image: shownImage, pixel: pixel, style: haloStyle, visible: transit == nil)
+        halo.update(behind: layer, image: shownImage, pixel: drawnPixel, style: haloStyle, visible: transit == nil && rimClip == nil)
 
         if let t = transit {
             continueTransit(t, dt: dt, world: world)
@@ -1456,6 +1480,7 @@ final class Cat {
         rummageFrom = CGPoint(x: x, y: y)
         rummageExitSide = Bool.random(using: &Sim.rng) ? 1 : -1
         rummageSeed = .random(in: 0...6, using: &Sim.rng)
+        rummagePixel = min(pixel, world.geo.furniturePixel)
         begin(.rummaging, for: .random(in: 5...9, using: &Sim.rng))
     }
 
@@ -1475,7 +1500,8 @@ final class Cat {
             return
         }
         let rim = can.y + CGFloat(PropArt.trashHeight) * world.geo.furniturePixel
-        let hidden = rim - 11 * pixel, peeking = rim - 3 * pixel
+        let hidden = rim - 11 * rummagePixel, peeking = rim - 3 * rummagePixel
+        rummageRim = (rim, can.x)
         func arc(_ k: CGFloat, _ from: CGPoint, _ to: CGPoint) -> CGPoint {
             let bump = (rim + 6 * pixel - min(from.y, to.y)) * sin(k * .pi)
             return CGPoint(x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k + max(0, bump - abs(to.y - from.y) * 0.5))
@@ -1498,7 +1524,7 @@ final class Cat {
                 trashBitCooldown -= dt
                 if trashBitCooldown <= 0 {
                     trashBitCooldown = .random(in: 0.15...0.35, using: &Sim.rng)
-                    world.spawnTrashBit(at: CGPoint(x: can.x + .random(in: -4...4, using: &Sim.rng) * pixel, y: rim + pixel))
+                    world.spawnTrashBit(at: CGPoint(x: can.x + .random(in: -4...4, using: &Sim.rng) * rummagePixel, y: rim + pixel))
                 }
             }
         default:
@@ -1946,7 +1972,8 @@ final class Cat {
         if layer.isHidden != hidden { layer.isHidden = hidden }
         haloStyle = world.store.standout
 
-        let size = canvasSize
+        let p = drawnPixel
+        let size = CGSize(width: CGFloat(CatArt.W) * p, height: CGFloat(CatArt.H) * p)
         let px = (x * 2).rounded() / 2
         let py = ((y + visualLift) * 2).rounded() / 2
         layer.bounds = CGRect(origin: .zero, size: size)
@@ -1961,8 +1988,8 @@ final class Cat {
 
         let originX = px - size.width / 2
         let box = sheet.bounds(a, index, facingRight: facingRight)
-        hitRect = CGRect(x: originX + box.minX * pixel, y: py + box.minY * pixel,
-                         width: box.width * pixel, height: box.height * pixel).insetBy(dx: -2, dy: -2)
+        hitRect = CGRect(x: originX + box.minX * p, y: py + box.minY * p,
+                         width: box.width * p, height: box.height * p).insetBy(dx: -2, dy: -2)
 
         if let t = transit {
             let shift = t.exit - t.entry
@@ -1979,6 +2006,11 @@ final class Cat {
             ghost.position = CGPoint(x: px + shift, y: py)
             ghost.zPosition = layer.zPosition
             ghost.isHidden = false
+        } else if let rim = rimClip {
+            let bottom = min(max(rim - py, 0), size.height)
+            clip.frame = CGRect(x: 0, y: bottom, width: size.width, height: size.height - bottom)
+            layer.mask = clip
+            ghost.isHidden = true
         } else {
             if layer.mask != nil { layer.mask = nil }
             ghost.isHidden = true

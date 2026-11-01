@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Big cats squeeze down to fit into the trash can, and no whiskers poke out through its sides any more.
+
 ## 0.2.0
 
 ### Easier to see
