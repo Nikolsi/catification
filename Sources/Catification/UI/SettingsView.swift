@@ -96,7 +96,7 @@ private struct CatsTab: View {
     }
 }
 
-private struct CatEditor: View {
+struct CatEditor: View {
     @Binding var cat: CatConfig
 
     var body: some View {
@@ -109,6 +109,7 @@ private struct CatEditor: View {
 
             Section("Cat") {
                 TextField("Name", text: $cat.name)
+                    .demoTarget("name")
                 Picker("Personality", selection: $cat.personality) {
                     ForEach(Personality.allCases) { Text($0.title).tag($0) }
                 }
@@ -119,6 +120,7 @@ private struct CatEditor: View {
                     ForEach(CatSize.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                .demoTarget("size")
             }
 
             Section("Coat") {
@@ -131,6 +133,7 @@ private struct CatEditor: View {
                     ForEach(FurPattern.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                .demoTarget("pattern")
                 ColorPicker("Fur", selection: color($cat.fur), supportsOpacity: false)
                 ColorPicker(cat.pattern.secondaryTitle, selection: color($cat.secondary), supportsOpacity: false)
                     .disabled(cat.pattern == .solid)

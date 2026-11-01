@@ -17,7 +17,7 @@ Catification is a small native macOS app (Swift, AppKit, Core Animation) that tu
 
 ## See it in action
 
-▶ [Watch the 20-second trailer](docs/media/trailer.mp4) · [Cats living on your windows](docs/media/windows.mp4)
+▶ [Watch the 20-second trailer](docs/media/trailer.mp4) · [Cats living on your windows](docs/media/windows.mp4) · [Bring your own cat: the cat editor](docs/media/editor.mp4)
 
 <table>
   <tr>

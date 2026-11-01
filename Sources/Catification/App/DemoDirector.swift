@@ -8,7 +8,7 @@ import SwiftUI
 @MainActor
 final class DemoDirector {
     enum Scene: String, CaseIterable {
-        case notch, jump, miss, trash, butterflies, pet, play, ambush, drink, laundry, naps, poses, trailer, windows
+        case notch, jump, miss, trash, butterflies, pet, play, ambush, drink, laundry, naps, poses, trailer, windows, editor
 
         /// How long the recording script should record, in seconds.
         var duration: Double {
@@ -27,6 +27,7 @@ final class DemoDirector {
             case .laundry: 15
             case .trailer: 22
             case .windows: 20
+            case .editor: 76
             }
         }
     }
@@ -38,7 +39,7 @@ final class DemoDirector {
     }
 
     let scene: Scene
-    private weak var world: CatWorld?
+    private(set) weak var world: CatWorld?
     /// The director of the running demo, if any, so the world can report key moments.
     private(set) static weak var current: DemoDirector?
     private var startTime = CACurrentMediaTime()
@@ -47,12 +48,22 @@ final class DemoDirector {
     /// "EVENT <name> <seconds> <cat> <x> <y>", where x and y place the cat in the stage (0…1,
     /// from the top left).
     func event(_ name: String, cat: Cat?) {
+        event(name, who: cat?.config.name, at: cat.map { CGPoint(x: $0.x, y: $0.y + $0.catHeight / 2) })
+    }
+
+    /// The same for a point on screen, such as the drawn cursor, with "-" for the cat.
+    func event(_ name: String, atScreen point: CGPoint) {
+        guard let frame = world?.geo.frame else { return }
+        event(name, who: nil, at: CGPoint(x: point.x - frame.minX, y: point.y - frame.minY))
+    }
+
+    private func event(_ name: String, who: String?, at point: CGPoint?) {
         var x = 0.5, y = 0.5
-        if let cat, let stage = world?.demoStage {
-            x = Double((cat.x - stage.minX) / stage.width)
-            y = Double(1 - (cat.y + cat.catHeight / 2 - stage.minY) / stage.height)
+        if let point, let stage = world?.demoStage {
+            x = Double((point.x - stage.minX) / stage.width)
+            y = Double(1 - (point.y - stage.minY) / stage.height)
         }
-        let catName = (cat?.config.name ?? "-").replacingOccurrences(of: " ", with: "_")
+        let catName = (who ?? "-").replacingOccurrences(of: " ", with: "_")
         let seconds = CACurrentMediaTime() - startTime
         print(String(format: "EVENT %@ %.2f %@ %.3f %.3f", name, seconds, catName, x, y))
         fflush(stdout)
@@ -63,10 +74,10 @@ final class DemoDirector {
     // Room scenes share one stage in the bottom-left corner of the screen.
     // Small, so cats look big in an 880px-wide GIF recorded at 2x.
     private static let room = CGRect(x: 140, y: 0, width: 440, height: 300)
-    private static let floor: CGFloat = 26
+    static let floor: CGFloat = 26
     private static var groundY: CGFloat { room.minY + floor }
 
-    private let shelfA = UUID(), shelfB = UUID(), bed = UUID(), trash = UUID()
+    let shelfA = UUID(), shelfB = UUID(), bed = UUID(), trash = UUID()
 
     init(scene: Scene) {
         self.scene = scene
@@ -114,6 +125,8 @@ final class DemoDirector {
         case .windows:
             cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
                     CatConfig(name: L("Marshmallow"), coat: .siamese, personality: .lazy)]
+        case .editor:
+            cats = [Self.editorCat]
         case .trailer:
             cats = [CatConfig(name: L("Ginger"), coat: .ginger, personality: .playful),
                     CatConfig(name: L("Marshmallow"), coat: .siamese, personality: .lazy)]
@@ -208,6 +221,18 @@ final class DemoDirector {
                                                               width: notch.upperBound - notch.lowerBound, height: world.geo.menuBarHeight),
                                menuBar: true, backdrop: false)
             setUpWindows(in: world, stage: stage)
+        } else if scene == .editor {
+            // 960×540 points at the top of the screen: 1920×1080 on Retina, the video's own size.
+            let notch = world.geo.notch
+            let mid = notch.map { ($0.lowerBound + $0.upperBound) / 2 } ?? world.geo.frame.width / 2
+            stage = CGRect(x: (mid - 480).rounded(), y: world.geo.height - 540, width: 960, height: 540)
+            world.store.walkOnWindows = true
+            world.demoWindows = true
+            world.demoFormulaScale = 1.5
+            world.setDemoStage(stage, floor: Self.floor, notch: notch.map {
+                CGRect(x: $0.lowerBound, y: world.geo.menuBarY, width: $0.upperBound - $0.lowerBound, height: world.geo.menuBarHeight)
+            }, menuBar: true, backdrop: false)
+            setUpEditor(in: world, stage: stage)
         } else if scene == .trailer, let notch = world.geo.notch {
             // 480×270 points: 960×540 on a Retina screen, scaled up exactly 2× to 1920×1080 for the trailer.
             let mid = (notch.lowerBound + notch.upperBound) / 2
@@ -271,7 +296,11 @@ final class DemoDirector {
                 world.cats[1].goToSleep(world, here: true)
             }
         }
-        if scene == .trailer || scene == .windows, CommandLine.arguments.contains("--wait-go") {
+        if scene == .editor, let cat = world.cats.first, let stage = world.demoStage {
+            // In the room, to the right of the editor window.
+            cat.demoPlace(x: stage.minX + 650, y: stage.minY + Self.floor + 4)
+        }
+        if scene == .trailer || scene == .windows || scene == .editor, CommandLine.arguments.contains("--wait-go") {
             waitForGo()
         } else {
             script()
@@ -302,15 +331,14 @@ final class DemoDirector {
     private var wallpaper: NSWindow?
     private var terminal: NSWindow?
     private var notes: NSWindow?
+    var editorWindow: NSWindow?
 
-    /// A wallpaper behind everything in the stage, and two real windows for the cats to walk on.
-    private func setUpWindows(in world: CatWorld, stage: CGRect) {
+    /// A wallpaper behind everything in the stage. An ordinary window, so it hides other apps'
+    /// windows from the cats as well as the camera. Its top edge is above the menu bar, so nobody walks on it.
+    func showWallpaper(in world: CatWorld, stage: CGRect) {
         let frame = world.geo.frame
         let screenStage = stage.offsetBy(dx: frame.minX, dy: frame.minY)
-
         let wall = NSWindow(contentRect: screenStage, styleMask: .borderless, backing: .buffered, defer: false)
-        // An ordinary window, so it hides other apps' windows from the cats as well as the camera.
-        // Its top edge is above the menu bar, so nobody walks on it.
         wall.level = .normal
         wall.ignoresMouseEvents = true
         wall.isReleasedWhenClosed = false
@@ -327,6 +355,12 @@ final class DemoDirector {
         if #available(macOS 14, *) { NSApp.activate() } else { NSApp.activate(ignoringOtherApps: true) }
         wall.orderFrontRegardless()
         wallpaper = wall
+    }
+
+    /// A wallpaper behind everything in the stage, and two real windows for the cats to walk on.
+    private func setUpWindows(in world: CatWorld, stage: CGRect) {
+        let frame = world.geo.frame
+        showWallpaper(in: world, stage: stage)
 
         func window(_ title: String, _ rect: CGRect, dark: Bool, content: some View) -> NSWindow {
             let w = NSWindow(contentRect: rect.offsetBy(dx: frame.minX, dy: frame.minY),
@@ -364,11 +398,11 @@ final class DemoDirector {
     }
 
     private var cursorWindow: NSWindow?
-    private var cursorPoint: CGPoint?
+    private(set) var cursorPoint: CGPoint?
 
     /// An arrow drawn by us. The real cursor stays parked off stage: it takes its shape from
     /// whichever app is in front (the terminal running the recording would show a text cursor).
-    private func showCursor(at point: CGPoint) {
+    func showCursor(at point: CGPoint) {
         let cursor = NSCursor.arrow
         let size = cursor.image.size
         cursorPoint = point
@@ -449,7 +483,7 @@ final class DemoDirector {
         case .play: return [r.minX + 150, r.minX + 240]
         case .naps: return [r.minX + 90, r.minX + 170, r.minX + 250, r.minX + 330, r.minX + 340]
         case .laundry: return [r.minX + 150, r.minX + 260, r.minX + 370]
-        case .windows: return []
+        case .windows, .editor: return []
         case .poses: return [r.minX + 60, r.minX + 160, r.minX + 270, r.minX + 380]
         case .ambush: return [r.minX + 150, r.minX + 230]
         case .drink: return [r.minX + 140, r.minX + 265]
@@ -460,7 +494,7 @@ final class DemoDirector {
     }
 
     /// Runs `action` after `seconds` of simulated time.
-    private func at(_ seconds: Double, _ action: @escaping (CatWorld) -> Void) {
+    func at(_ seconds: Double, _ action: @escaping (CatWorld) -> Void) {
         world?.after(seconds) { [weak self] in
             guard let world = self?.world else { return }
             action(world)
@@ -630,6 +664,8 @@ final class DemoDirector {
                 },
             ]
             at(1.2) { world in self.runSteps(in: world) }
+        case .editor:
+            editorScript()
         case .play:
             for t in [1.5, 6.5] {
                 at(t) { world in
@@ -642,7 +678,7 @@ final class DemoDirector {
     }
 
     /// Checks `done` every 0.1 s of simulated time until it returns true.
-    private func poll(_ done: @escaping (CatWorld) -> Bool) {
+    func poll(_ done: @escaping (CatWorld) -> Bool) {
         at(0.1) { [weak self] world in
             if !done(world) { self?.poll(done) }
         }

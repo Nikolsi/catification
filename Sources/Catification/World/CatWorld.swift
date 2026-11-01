@@ -83,6 +83,8 @@ final class CatWorld {
     /// Demo recordings with real windows: cats walk on them even inside a stage, and the
     /// window list is read every frame so riding a dragged window looks smooth.
     var demoWindows = false
+    /// Demo recordings with a drawn cursor: where it is, standing in for the real mouse.
+    var demoMouse: CGPoint?
 
     /// Where cats, toys and butterflies may go. The whole panel, unless a demo stage is set.
     var playArea: CGRect { demoStage ?? CGRect(origin: .zero, size: geo.frame.size) }
@@ -263,7 +265,7 @@ final class CatWorld {
         let dt = Sim.advance(realDelta: t - lastTime)
         lastTime = t
         let m = NSEvent.mouseLocation
-        mouse = CGPoint(x: m.x - geo.frame.minX, y: m.y - geo.frame.minY)
+        mouse = demoMouse ?? CGPoint(x: m.x - geo.frame.minX, y: m.y - geo.frame.minY)
         step(dt)
 
         // Only catch the mouse while it is over something interactive; everywhere else

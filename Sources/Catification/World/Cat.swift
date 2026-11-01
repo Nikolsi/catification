@@ -822,6 +822,12 @@ final class Cat {
         world.report?.napped(at: nil, cat: self)
     }
 
+    /// Demo recordings: off to nap at a kind of place, without rolling the dice on "right here".
+    func demoNap(at place: CatPlace, world: CatWorld) -> Bool {
+        guard canInteract, surface != nil else { return false }
+        return nap(at: place, world)
+    }
+
     /// Goes to a kind of place, to sleep there (or, for recipes, to sit).
     private func nap(at place: CatPlace, _ world: CatWorld, then next: Activity = .sleep) -> Bool {
         huggingFountain = place == .fountain && next == .sleep

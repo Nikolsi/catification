@@ -4,14 +4,15 @@
 #   scripts/record-trailer.sh                    # the trailer: record + render
 #   scripts/record-trailer.sh windows            # the short about real windows
 #   scripts/record-trailer.sh windows --render   # re-render from the last recording (e.g. after editing promo/src)
+#   scripts/record-trailer.sh editor             # "Bring your own cat": the cat editor, worked by a drawn cursor
 #   scripts/record-trailer.sh poses              # a square clip of the sleeping poses for social media,
 #                                                # into promo/out/sleep-poses.mp4 and .gif (not committed)
 #
-# Each story is scripted in DemoDirector (scenes "trailer" and "windows"). The scene waits for a go
+# Each story is scripted in DemoDirector (scenes "trailer", "windows" and "editor"). The scene waits for a go
 # signal, so the recording is already running when the cat sets off; at that moment the clock in its
 # menu bar ticks from 9:40 to 9:41, and ffmpeg finds that frame to line the events up with the footage.
 # Needs ffmpeg, Node.js and a MacBook with a notch. Keep the mouse off the
-# recorded area: the cursor shows up in the footage.
+# recorded area (the cursor shows up in the footage) and don't type: the editor scene's window takes the keys.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -20,11 +21,11 @@ RENDER_ONLY=0
 for arg in "$@"; do
     case "$arg" in
         --render) RENDER_ONLY=1 ;;
-        trailer | windows | poses) SCENE="$arg" ;;
-        *) echo "usage: $0 [trailer|windows|poses] [--render]" >&2; exit 1 ;;
+        trailer | windows | editor | poses) SCENE="$arg" ;;
+        *) echo "usage: $0 [trailer|windows|editor|poses] [--render]" >&2; exit 1 ;;
     esac
 done
-# Remotion composition ids: Trailer, Windows.
+# Remotion composition ids: Trailer, Windows, Editor.
 COMPOSITION="$(tr '[:lower:]' '[:upper:]' <<< "${SCENE:0:1}")${SCENE:1}"
 [ "$SCENE" = poses ] && COMPOSITION=SleepPoses
 PUBLIC=promo/public/$SCENE
@@ -79,8 +80,19 @@ if [ "$RENDER_ONLY" = 0 ]; then
         # Events become footage times: { "offset": 1.62, "events": { "hang": { "t": 9.2, "x": 0.64, "y": 0.39 } } }
         # The hero is the first cat. The trailer pivots on its hang: keep the last portal, calculation
         # and jump before it (the first jump is the hop down to a shelf) and the first fall after it.
-        # The windows short just takes the first of each.
-        if [ "$SCENE" = windows ]; then
+        # The windows short just takes the first of each; so does the editor, whose cursor's moments have no cat ("-").
+        if [ "$SCENE" = editor ]; then
+            awk -v offset="$OFFSET" '
+                $1 != "EVENT" || ($4 != "Biscuit" && $4 != "-") || ($2 in line) { next }
+                { line[$2] = sprintf("{ \"t\": %s, \"x\": %s, \"y\": %s }", $3 + offset, $5, $6) }
+                END {
+                    printf "{\n  \"offset\": %s,\n  \"events\": {\n", offset
+                    n = split("name story habit trash rummage rummaged spot nap asleep ritual pet follow home end", names, " ")
+                    for (i = 1; i <= n; i++) printf "    \"%s\": %s%s\n", names[i], line[names[i]], (i < n ? "," : "")
+                    print "  }\n}"
+                }
+            ' "$TMP/events.txt" > "$PUBLIC/timeline.json"
+        elif [ "$SCENE" = windows ]; then
             awk -v offset="$OFFSET" '
                 $1 != "EVENT" || $4 != "Ginger" || ($2 in line) { next }
                 { line[$2] = sprintf("{ \"t\": %s, \"x\": %s, \"y\": %s }", $3 + offset, $5, $6) }

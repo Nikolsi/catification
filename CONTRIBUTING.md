@@ -57,14 +57,16 @@ scripts/record-demos.sh jump trash  # just some
 - Your terminal needs the Screen Recording permission. Don't touch the mouse while recording: the
   `pet` scene moves the cursor itself, and the others park it off-stage.
 
-## The trailer and the windows short
+## The trailer and the other videos
 
 `make trailer` records the trailer footage from the `trailer` demo scene and composes it with [Remotion](https://www.remotion.dev)
 into `docs/media/trailer.mp4`: camera moves, slow motion on the missed jump and the end card.
 `make windows-video` does the same for `docs/media/windows.mp4`, a short with real windows: the app opens a
 Terminal-like and a Notes-like window, drags them around and the cats ride along and jump between them.
+`make editor-video` makes `docs/media/editor.mp4`, "Bring your own cat": a drawn cursor works the real cat editor
+(a name, the looks, a story, habits, a nap spot, a ritual) and the cat next to it does each thing as it's set.
 
-- The stories are scripted in `DemoDirector.swift`. The compositions live in `promo/src/Trailer.tsx` and `promo/src/Windows.tsx`
+- The stories are scripted in `DemoDirector.swift` (the editor's in `EditorDemo.swift`). The compositions live in `promo/src/Trailer.tsx`, `Windows.tsx` and `Editor.tsx`
   (shared intro, footage and end card in `promo/src/common.tsx`); they are timed by the events the scene reports
   (portal, calculate, jump, hang…), so they keep working when a story changes.
 - `scripts/record-trailer.sh poses` makes a square clip of the sleeping poses for social media (`promo/out/sleep-poses.mp4` and `.gif`, not committed).

@@ -17,7 +17,7 @@ Catification — небольшое нативное приложение для
 
 ## Как это выглядит
 
-▶ [Трейлер на 20 секунд](docs/media/trailer.mp4) · [Котики живут на ваших окнах](docs/media/windows.mp4)
+▶ [Трейлер на 20 секунд](docs/media/trailer.mp4) · [Котики живут на ваших окнах](docs/media/windows.mp4) · [Свой котик: редактор котов](docs/media/editor.mp4)
 
 <table>
   <tr>

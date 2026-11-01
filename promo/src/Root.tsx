@@ -1,5 +1,6 @@
 import { Composition, staticFile } from "remotion";
 import { FPS } from "./common";
+import { Editor, editorDuration, type EditorTimeline } from "./Editor";
 import { Trailer, trailerDuration, type TrailerTimeline } from "./Trailer";
 import { SleepPoses, sleepPosesDuration } from "./SleepPoses";
 import { Windows, windowsDuration, type WindowsTimeline } from "./Windows";
@@ -33,6 +34,19 @@ export const Root: React.FC = () => (
       calculateMetadata={async ({ props }) => {
         const timeline: WindowsTimeline = props.timeline ?? (await load("windows"));
         return { props: { timeline }, durationInFrames: Math.round(windowsDuration(timeline) * FPS) };
+      }}
+    />
+    <Composition
+      id="Editor"
+      component={Editor}
+      fps={FPS}
+      width={1920}
+      height={1080}
+      durationInFrames={FPS * 16}
+      defaultProps={{ timeline: null as EditorTimeline | null }}
+      calculateMetadata={async ({ props }) => {
+        const timeline: EditorTimeline = props.timeline ?? (await load("editor"));
+        return { props: { timeline }, durationInFrames: Math.round(editorDuration(timeline) * FPS) };
       }}
     />
     <Composition

@@ -28,6 +28,7 @@ struct CharacterSections: View {
             TextEditor(text: $cat.about)
                 .font(.body)
                 .frame(minHeight: 70)
+                .demoTarget("about")
             Text("Their story, quirks and what they love. Describe a real cat — yours, or one you miss.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -48,6 +49,7 @@ struct CharacterSections: View {
                     .buttonStyle(.borderless)
                     .help("Back to ordinary")
                 }
+                .demoTarget("habit.\(group.actions[0].rawValue)")
             }
             if shownHabitGroups.isEmpty {
                 Text("An ordinary cat. Add what makes this one special.")
@@ -96,6 +98,7 @@ struct CharacterSections: View {
                     .buttonStyle(.borderless)
                     .help("Not a favourite")
                 }
+                .demoTarget("spot.\(place.rawValue)")
             }
             if shownPlaces.isEmpty {
                 Text("Naps wherever it happens to be.")
@@ -124,6 +127,7 @@ struct CharacterSections: View {
                 Text("Any way").tag(SleepPose?.none)
                 ForEach(SleepPose.allCases) { Text($0.title).tag(SleepPose?.some($0)) }
             }
+            .demoTarget("sleeps")
             Toggle("Drinks lying down by the fountain", isOn: brain.drinksLyingDown)
         }
 
@@ -163,6 +167,7 @@ struct CharacterSections: View {
                 RecipeRow(recipe: $recipe) {
                     brain.wrappedValue.recipes.removeAll { $0.id == recipe.id }
                 }
+                .demoTarget("ritual.\(recipe.template?.rawValue ?? recipe.name)")
             }
             let added = Set(brain.wrappedValue.recipes.compactMap(\.template))
             Menu {
@@ -175,6 +180,7 @@ struct CharacterSections: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
             .disabled(RecipeTemplate.allCases.allSatisfy { added.contains($0) })
+            .demoTarget("addRitual")
         } header: {
             Text("Rituals")
         } footer: {
